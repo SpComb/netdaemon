@@ -1,4 +1,5 @@
 #include "service.h"
+#include "client.h"
 #include "globals.h"
 #include "shared/log.h"
 
@@ -10,7 +11,7 @@
 #include <errno.h>
 
 /**
- * Get service socket
+ * Service socket's fd
  */
 static inline int service_sock (struct service *service)
 {

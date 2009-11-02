@@ -22,16 +22,18 @@ static int client_on_hello (struct proto_msg *msg, void *ctx)
 {
     struct client *client = ctx;
     uint16_t proto_version;
+    int err = 0;
 
-    proto_read_uint16(msg, &proto_version);
+    if ((err = proto_read_uint16(msg, &proto_version)))
+        return err;
 
     log_info("proto_version=%u", proto_version);
 
-    return 0;
+    return err;
 }
 
 /**
- * Server-side client command handlers
+ * Server-side command handlers
  */
 struct proto_cmd_handler client_cmd_handlers[] = {
     {   CMD_HELLO,      client_on_hello     },
@@ -52,7 +54,8 @@ static int client_disconnected (struct client *client)
     // release the socket
     close(client_sock(client));
 
-    // XXX: dispose of client!?
+    // XXX: breaks socket_loop_run
+    // free(client)
 
     return SELECT_ERR;
 }
@@ -62,8 +65,7 @@ static int client_disconnected (struct client *client)
  */
 static int client_error (struct client *client, int error)
 {
-
-    // XXX: send an ND_CMD_ERROR message back
+    // XXX: send an ND_CMD_ERROR message
     
     // dispose
     return client_disconnected(client);
@@ -74,9 +76,15 @@ static int client_error (struct client *client, int error)
  */
 static int client_on_msg (struct client *client, char *buf, size_t len)
 {
+    int err = 0;
+
     // dispatch to command handler
     // XXX: what form of error handling?
-    return proto_cmd_dispatch(client_cmd_handlers, buf, len, client);
+    if ((err = proto_cmd_dispatch(client_cmd_handlers, buf, len, client)) < 0)
+        return client_error(client, -err);
+
+    // ok
+    return err;
 }
 
 /**

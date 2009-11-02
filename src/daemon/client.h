@@ -20,7 +20,7 @@ struct client {
  * Construct a new client and activate it.
  *
  * @param client_ptr returned client struct if not NULL
- * @param sock new, connected socket fd of the SOCK_SEQPACKET type
+ * @param sock connected socket fd of the SOCK_SEQPACKET type
  */
 int client_add_seqpacket (int sock);
 
