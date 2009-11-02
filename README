@@ -1,0 +1,8 @@
+netdaemon
+
+Asynchronous control of persistent daemon processes.
+
+netdaemon is a daemon program that offers an remote/asynchronous API for running and controlling a set of other
+processes. Included is also a client library and command-line utility.
+
+
