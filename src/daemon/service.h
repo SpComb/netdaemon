@@ -6,6 +6,7 @@
  *
  * Remote services, listening sockets.
  */
+#include "shared/select.h"
 
 /**
  * Listen backlog used
@@ -16,8 +17,8 @@
  * A listening service socket that accept()'s connections.
  */
 struct service {
-    /** The socket to accept() on */
-    int sock;
+    /** socket IO info */
+    struct select_fd fd;
 };
 
 /**
@@ -30,6 +31,8 @@ struct service {
  * @return zero on success, <0 on error
  */
 int service_open_unix (struct service **service_ptr, const char *path);
+
+
 
 /**
  * Close the service socket and release any resources associated with the service itself

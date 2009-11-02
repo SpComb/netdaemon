@@ -1,4 +1,6 @@
 #include "service.h"
+#include "globals.h"
+#include "shared/log.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -7,11 +9,64 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+/**
+ * Get service socket
+ */
+static inline int service_sock (struct service *service)
+{
+    return service->fd.fd;
+}
+
+/**
+ * Get service name
+ */
+static const char *service_name (struct service *service)
+{
+    static char name[512];
+    struct sockaddr_un sa;
+    socklen_t sa_len = sizeof(sa);
+
+    if (getsockname(service_sock(service), (struct sockaddr *) &sa, &sa_len) < 0)
+        return "";
+
+    strncpy(name, sa.sun_path, sizeof(name));
+
+    return name;
+}
+
+/**
+ * Select handler for accept() on service socket
+ */
+static int service_on_accept (int fd, short what, void *arg)
+{
+    struct service *service = arg;
+
+    int client_sock;
+
+    // try accept()
+    if ((client_sock = accept(fd, NULL, 0)) < 0)
+        return SELECT_ERR;
+
+    log_info("Accept service connection on [%s]: fd=%d", service_name(service), client_sock);
+    
+    // construct client state
+    if (client_add_seqpacket(client_sock) < 0) {
+        log_warn("Dropping client connection: client_add_seqpacket: %s", strerror(errno));
+
+        close(client_sock);
+
+        return SELECT_ERR;
+    }
+
+    return SELECT_OK;
+}
+
 int service_open_unix (struct service **service_ptr, const char *path)
 {
     struct service *service = NULL;
     struct sockaddr_un sa;
     struct stat st;
+    int sock;
 
     // validate
     if (strlen(path) >= sizeof(sa.sun_path)) {
@@ -30,7 +85,7 @@ int service_open_unix (struct service **service_ptr, const char *path)
 
 
     // construct socket
-    if ((service->sock = socket(AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
+    if ((sock = socket(AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
         goto error;
     
     // test for existing socket
@@ -50,12 +105,18 @@ int service_open_unix (struct service **service_ptr, const char *path)
     }
 
     // bind to path
-    if (bind(service->sock, (struct sockaddr *) &sa, SUN_LEN(&sa)) < 0)
+    if (bind(sock, (struct sockaddr *) &sa, SUN_LEN(&sa)) < 0)
         goto error;
 
     // and do listen
-    if (listen(service->sock, SERVICE_LISTEN_BACKLOG) < 0)
+    if (listen(sock, SERVICE_LISTEN_BACKLOG) < 0)
         goto error;
+
+    // init selectable
+    select_fd_init(&service->fd, sock, FD_READ, service_on_accept, service);
+
+    // activate
+    select_loop_add(&daemon_select_loop, &service->fd);
 
     // ok
     *service_ptr = service;
@@ -72,8 +133,14 @@ error:
 
 void service_destroy (struct service *service)
 {
-    if (service->sock >= 0)
-        close(service->sock);
-
+    // remove from select loop
+    select_loop_del(&daemon_select_loop, &service->fd);
+    
+    // close socket
+    if (service->fd.fd >= 0)
+        close(service->fd.fd);
+    
+    // release
     free(service);
 }
+

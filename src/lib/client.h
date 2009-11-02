@@ -26,6 +26,11 @@ struct nd_client {
 int nd_open_unix (struct nd_client **client_ptr, const char *path);
 
 /**
+ * Send a CMD_HELLO message to the service
+ */
+int nd_cmd_hello (struct nd_client *client);
+
+/**
  * Force-close the given client connection, releasing any allocated resources and invalidating the nd_client*.
  *
  * @param client opened nd_client to release
