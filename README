@@ -5,4 +5,11 @@ Asynchronous control of persistent daemon processes.
 netdaemon is a daemon program that offers an remote/asynchronous API for running and controlling a set of other
 processes. Included is also a client library and command-line utility.
 
+The daemon runs a set of background processes which are attached to the daemon, and then clients may connect to the
+daemon and issue commands to control these processes. The daemon offers the following aspects of control:
+    * exec path (direct filesystem path)
+    * exec arguments
+    * exec environment
 
+    * sending signals
+    * watching status

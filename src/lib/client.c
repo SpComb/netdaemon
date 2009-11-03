@@ -13,22 +13,8 @@
  */
 int nd_send_msg (struct nd_client *client, struct proto_msg *msg)
 {
-    ssize_t ret;
-
-    if ((ret = send(client->sock, msg->buf, msg->offset, 0)) < 0)
-        return -1;
-
-    // XXX: for now, assume that we can send complete messages...
-    if (ret < msg->offset) {
-        errno = EMSGSIZE;
-
-        return -1;
-    }
-
-    // ok
-    return 0;
+    return proto_send_seqpacket(client->sock, msg);
 }
-
 
 int nd_open_unix (struct nd_client **client_ptr, const char *path)
 {
@@ -88,6 +74,34 @@ int nd_cmd_hello (struct nd_client *client)
 
     // send
     return nd_send_msg(client, &msg);
+}
+
+int nd_cmd_exec (struct nd_client *client, const char *path, const char *argv[], const char *envp[])
+{
+    char buf[ND_PROTO_MSG_MAX];
+    struct proto_msg msg;
+
+    // start CMD_EXEC
+    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_EXEC))
+        goto error;
+
+    // write fields
+    if (
+            proto_write_str(&msg, path)
+        ||  proto_write_str_array(&msg, argv)
+        ||  proto_write_str_array(&msg, envp)
+    )
+        goto error;
+    
+    // send
+    if (nd_send_msg(client, &msg))
+        goto error;
+
+    // ok
+    return 0;
+
+error:
+    return -1;
 }
 
 void nd_destroy (struct nd_client *client)

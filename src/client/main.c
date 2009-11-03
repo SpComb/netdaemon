@@ -20,9 +20,20 @@ int main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    // send
+    // greet
     if (nd_cmd_hello(client) < 0) {
         log_errno("nd_cmd_hello");
+
+        return EXIT_FAILURE;
+    }
+
+    // send exec command
+    if (nd_cmd_exec(client,
+        "foo",
+        ((const char *[]){ "arg1", "arg2", NULL }),
+        ((const char *[]){ "foo=bar", NULL })
+    )) {
+        log_errno("nd_cmd_exec");
 
         return EXIT_FAILURE;
     }
