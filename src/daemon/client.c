@@ -1,7 +1,9 @@
+#define _GNU_SOURCE
 #include "client.h"
 #include "commands.h"
 #include "shared/log.h"
 #include "shared/proto.h"
+#include "shared/util.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -232,6 +234,10 @@ int client_add_seqpacket (struct daemon *daemon, int sock)
 
     // init
     client->daemon = daemon;
+
+    // set state
+    if (fd_flags(sock, O_NONBLOCK|O_CLOEXEC))
+        return -1;
 
     // init fd state
     select_fd_init(&client->fd, sock, FD_READ, client_on_read_seqpacket, client);

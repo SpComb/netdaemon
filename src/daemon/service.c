@@ -1,7 +1,9 @@
+#define _GNU_SOURCE
 #include "service.h"
 #include "client.h"
 #include "globals.h"
 #include "shared/log.h"
+#include "shared/util.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -113,6 +115,10 @@ int service_open_unix (struct daemon *daemon, struct service **service_ptr, cons
 
     // and do listen
     if (listen(sock, SERVICE_LISTEN_BACKLOG) < 0)
+        goto error;
+
+    // set flags
+    if (fd_flags(sock, O_NONBLOCK|O_CLOEXEC))
         goto error;
 
     // init selectable
