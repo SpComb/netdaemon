@@ -4,7 +4,7 @@
 #include <sys/select.h>
 #include <string.h>
 
-void select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg)
+int select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg)
 {
     memset(fd, 0, sizeof(*fd));
 
@@ -14,6 +14,9 @@ void select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t
     fd->want_read = mask & FD_READ;
     fd->want_write = mask & FD_WRITE;
     fd->active = false;
+
+    // ok
+    return 0;
 }
 
 void select_loop_init (struct select_loop *loop)
@@ -22,12 +25,15 @@ void select_loop_init (struct select_loop *loop)
     LIST_INIT(&loop->fds);
 }
 
-void select_loop_add (struct select_loop *loop, struct select_fd *fd)
+int select_loop_add (struct select_loop *loop, struct select_fd *fd)
 {
     // add to fd list
     LIST_INSERT_HEAD(&loop->fds, fd, loop_fds);
 
     fd->active = true;
+
+    // ok
+    return 0;
 }
 
 void select_loop_del (struct select_loop *loop, struct select_fd *fd)

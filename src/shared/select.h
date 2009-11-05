@@ -63,7 +63,7 @@ struct select_fd {
 /**
  * Set up select_fd values
  */
-void select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg);
+int select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg);
 
 /**
  * Change read flag
@@ -97,7 +97,7 @@ void select_loop_init (struct select_loop *loop);
 /**
  * Add the given select_fd to the select loop
  */
-void select_loop_add (struct select_loop *loop, struct select_fd *fd);
+int select_loop_add (struct select_loop *loop, struct select_fd *fd);
 
 /**
  * Remove the given select_fd from the select loop if active

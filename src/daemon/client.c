@@ -47,6 +47,8 @@ void client_destroy (struct client *client)
  */
 static void client_disconnected (struct client *client)
 {
+    log_info("[%p] Disconnected", client);
+
     // XXX: breaks socket_loop_run
     client_destroy(client);
 }
@@ -60,7 +62,9 @@ static void client_abort (struct client *client, int error)
     char buf[512];
     struct proto_msg msg;
 
-    // build CMD_ERROR packet
+    log_warn("[%p] Terminate: %s", client, strerror(error));
+
+    // build CMD_ABORT packet
     if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_ABORT, 0))
         goto error;
 
@@ -91,6 +95,9 @@ static int client_reply (struct client *client, struct proto_msg *req, int error
     // XXX: use reply-buf from client_on_msg instead?
     char buf[512];
     struct proto_msg msg;
+
+    if (error)
+        log_warn("[%p] Soft error: %s", client, strerror(error));
 
     // init out-msg
     if (proto_msg_init(&msg, buf, sizeof(buf)))
@@ -209,3 +216,10 @@ int client_add_seqpacket (struct daemon *daemon, int sock)
     return 0;
 }
 
+void client_on_process_data (struct process *process, enum process_fd channel, const char *buf, size_t len, void *ctx)
+{
+    struct client *client = ctx;
+
+    log_debug("[%p] Got data on %d from process [%p]: %.*s", client, channel, process, len, buf);
+
+}

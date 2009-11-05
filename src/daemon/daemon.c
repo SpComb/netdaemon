@@ -35,7 +35,7 @@ int daemon_process_start (struct daemon *daemon, struct process **proc_ptr, cons
     struct process *process;
 
     // start
-    if (process_start(&process, exec_info))
+    if (process_start(daemon, &process, exec_info))
         return -1;
 
     // add

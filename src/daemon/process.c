@@ -1,17 +1,97 @@
+#define _GNU_SOURCE /* for O_CLOEXEC */
 #include "process.h"
 #include "shared/log.h"
+#include "shared/util.h"
 #include "client.h"
 
 #include <unistd.h>
+#include <fcntl.h>
+
+/**
+ * Read-cctivity on process fd
+ */
+static int process_on_read (struct process *process, enum process_fd channel, int fd)
+{
+    char buf[4096];
+    ssize_t ret;
+    struct client *client;
+
+    // read chunk
+    if ((ret = read(fd, buf, sizeof(buf))) < 0)
+        goto error;
+
+    else if (ret == 0)
+        // eof
+        select_loop_del(&process->daemon->select_loop, &process->std_out);
+
+    // pass off to each attached client
+    LIST_FOREACH(client, &process->clients, process_clients) {
+        // callback
+        client_on_process_data(process, channel, buf, ret, client);
+    }
+    
+    // ok
+    return 0;
+
+error:
+    // XXX: kill process?
+    return -1;    
+}
+
+/**
+ * Activity on process stdout
+ */
+static int process_on_stdout (int fd, short what, void *ctx)
+{
+    struct process *process = ctx;
+    
+    return process_on_read(process, PROCESS_STDOUT, fd);
+}
+
+/**
+ * Activity on process stderr
+ */
+static int process_on_stderr (int fd, short what, void *ctx)
+{
+    struct process *process = ctx;
+    
+    return process_on_read(process, PROCESS_STDERR, fd);
+}
+
+/**
+ * Set of process's stdin/out/err io info
+ */
+struct process_io_info {
+    int std_in, std_out, std_err;
+};
 
 /**
  * Perform exec() with the given parameters
  */
-static void _process_exec (const struct process_exec_info *exec_info)
+static void _process_exec (const struct process_exec_info *exec_info, const struct process_io_info *io_info)
     __attribute__ ((noreturn));
 
-static void _process_exec (const struct process_exec_info *exec_info)
+static void _process_exec (const struct process_exec_info *exec_info, const struct process_io_info *io_info)
 {
+    // setup stdin/out/err fds
+    if (
+            dup2(io_info->std_in,  STDIN_FILENO ) < 0
+        ||  dup2(io_info->std_out, STDOUT_FILENO) < 0
+        ||  dup2(io_info->std_err, STDERR_FILENO) < 0
+    )
+        FATAL_ERRNO("dup2");
+
+    // close old fds
+    if (io_info->std_in != STDIN_FILENO)
+        close(io_info->std_in);
+
+    if (io_info->std_out != STDOUT_FILENO)
+        close(io_info->std_out);
+
+    if (io_info->std_err != STDERR_FILENO)
+        close(io_info->std_err);
+    
+    // exec
     if (execve(exec_info->path, exec_info->argv, exec_info->envp) < 0)
         // fail
         FATAL_ERRNO("execve: %s", exec_info->path);
@@ -23,26 +103,66 @@ static void _process_exec (const struct process_exec_info *exec_info)
 /**
  * Spawn a new process and execute with given params
  */
-static int process_spawn (struct process *proc, const struct process_exec_info *exec_info)
+static int process_spawn (struct process *process, const struct process_exec_info *exec_info)
 {
+    struct process_io_info exec_io, proc_io;
+
     // verify exec early
     if (access(exec_info->path, X_OK) < 0)
         return -1;
 
-    // perform fork
-    if ((proc->pid = fork()) < 0)
-        return -1;
+    // create stdin/out/err pipes
+    if (
+            make_pipe(&exec_io.std_in,  &proc_io.std_in)
+        ||  make_pipe(&proc_io.std_out, &exec_io.std_out)
+        ||  make_pipe(&proc_io.std_err, &exec_io.std_err)
+    )
+        goto error;
 
-    else if (proc->pid == 0)
+    // set flags
+    if (
+            fd_flags(proc_io.std_in,  O_CLOEXEC|O_NONBLOCK)
+        ||  fd_flags(proc_io.std_out, O_CLOEXEC|O_NONBLOCK)
+        ||  fd_flags(proc_io.std_err, O_CLOEXEC|O_NONBLOCK)
+    )
+        goto error;
+
+    log_debug("[%p] stdin -> %d, stdout -> %d, stderr -> %d", process, proc_io.std_in, proc_io.std_out, proc_io.std_err);
+
+    // setup proc's io
+    process->std_in = proc_io.std_in;
+
+    if (
+            select_fd_init(&process->std_out, proc_io.std_out, FD_READ, process_on_stdout, process)
+        ||  select_fd_init(&process->std_err, proc_io.std_err, FD_READ, process_on_stderr, process)
+    )
+        goto error;
+
+    // activate IO
+    if (
+            select_loop_add(&process->daemon->select_loop, &process->std_out)
+        ||  select_loop_add(&process->daemon->select_loop, &process->std_err)
+    )
+        goto error;
+
+    // perform fork
+    if ((process->pid = fork()) < 0)
+        goto error;
+
+    else if (process->pid == 0)
         // child performs exec()
-        _process_exec(exec_info);
+        _process_exec(exec_info, &exec_io);
 
     else
         // child started, parent continues
         return 0;
+
+error:
+    // XXX: close pipes?
+    return -1;
 }
 
-int process_start (struct process **proc_ptr, const struct process_exec_info *exec_info)
+int process_start (struct daemon *daemon, struct process **proc_ptr, const struct process_exec_info *exec_info)
 {
     struct process *process;
 
@@ -51,6 +171,7 @@ int process_start (struct process **proc_ptr, const struct process_exec_info *ex
         return -1;
 
     // init
+    process->daemon = daemon;
     LIST_INIT(&process->clients);
 
     // start

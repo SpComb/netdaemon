@@ -35,4 +35,11 @@ struct client {
  */
 int client_add_seqpacket (struct daemon *daemon, int sock);
 
+/**
+ * Client got data from attached process.
+ *
+ * XXX: should not be a 'public' interface
+ */
+void client_on_process_data (struct process *process, enum process_fd channel, const char *buf, size_t len, void *ctx);
+
 #endif
