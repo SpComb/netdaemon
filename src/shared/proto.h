@@ -35,10 +35,10 @@ enum proto_cmd {
      * protocol version used; the version specified by the client takes precedence if the server replies with a newer
      * version, this is just used to indicate what the server could support.
      */
-    CMD_HELLO    = 0x0001,
+    CMD_HELLO       = 0x0001,
 
     /**
-     * Client -> Server:
+     * Client -> Server: start new process and attach to it
      *  [uint16_t]      path
      *  [uint16_t]      argv {
      *      [uint16_t]      arg
@@ -47,22 +47,32 @@ enum proto_cmd {
      *      [uint16_t]      env
      *  }
      */
-    CMD_START    = 0x0101,
-
+    CMD_START       = 0x0101,
 
     /**
-     * Server -> Client: associated command processed, generic reply code
+     * Server -> Client: attached to given process
+     *  [uint16_t]      proc_id
+     */
+    CMD_ATTACHED    = 0x0110,
+
+    /**
+     * Server -> Client: Associated command executed ok, no specific reply data
+     */
+    CMD_OK          = 0xff00,
+
+    /**
+     * Server -> Client: Associated command failed with error
      *  int32_t         err_code
      *  [uint16_t]      err_msg
      */
-    CMD_REPLY   = 0xff01,
+    CMD_ERROR       = 0xfff0,
 
     /**
-     * Server -> Client: Terminal error, connection will be closed
+     * Server -> Client: Terminal protocol/system error, connection will be closed
      *  int32_t         err_code
      *  [uint16_t]      err_msg
      */
-    CMD_ERROR   = 0xffff,
+    CMD_ABORT       = 0xffff,
 };
 
 /**
@@ -83,20 +93,27 @@ struct proto_msg {
     /** Current offset into message*/
     size_t offset;
 
-    /**
-     * Per-message handle
-     */
+    /** Per-message handle */
     uint32_t id;
+
+    /** Command code */
+    uint16_t cmd;
 };
 
 /**
  * Incoming message handler.
  *
+ * The incoming message will be given as \a in, and should be read by the handler using the proto_read_* commands.
+ *
+ * Optionally, the handler may also build a new packet in \a out to send back using the proto_cmd_init(out, ...)
+ * command.
+ *
  * In case of system error (e.g. memory allocation failure, I/O error, etc), these should set an error code in errno,
- * and return -1. In case of non-fatal protocol errors, these should simply return the relevant error code as a
- * positive integer.
+ * and return -1.
+ *
+ * In case of non-fatal protocol errors, these should simply return the relevant error code as a positive integer.
  */
-typedef int (*proto_cmd_handler_t) (struct proto_msg *msg, void *ctx);
+typedef int (*proto_cmd_handler_t) (struct proto_msg *in, struct proto_msg *out, void *ctx);
 
 /**
  * Incoming command -> handler mapping
@@ -112,22 +129,35 @@ struct proto_cmd_handler {
 /**
  * Read a cmd from the given proto_msg, and then dispatch it to the correct handler.
  *
+ * The incoming message should be given via \a in, and an initialized proto_msg via \a out for optional use by the
+ * command handler. Test for non-zero out->cmd on return to handle outgoing message.
+ *
  * As per proto_cmd_handler_t, this will set errno and return -1 in case of system error, or return a positive error
  * code in case of non-fatal protocol error.
  *
  * Returns ENOTSUP if no matching command handler was found.
  */
-int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *msg, void *ctx);
+int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *in, struct proto_msg *out, void *ctx);
 
 /**
- * Initialize a proto_msg using the given storage buffer
+ * Initialize a proto_msg buffer for use using the given storage buffer.
  */
 int proto_msg_init (struct proto_msg *msg, char *buf, size_t len);
 
 /**
- * Initialize a proto_msg using the given storage buffer, command code and message id
+ * Initialize a protocol command in the given proto_msg with the given message ID and command code.
  */
-int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd, uint32_t id);
+int proto_cmd_start (struct proto_msg *msg, uint32_t id, enum proto_cmd cmd);
+
+/**
+ * Initialize a protocol command in the given proto_msg as a reply to the given second message with given reply command.
+ */
+int proto_cmd_reply (struct proto_msg *msg, struct proto_msg *req, enum proto_cmd cmd);
+
+/**
+ * Initialize the given proto_msg buf and cmd in the same step
+ */
+int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, uint32_t id, enum proto_cmd cmd);
 
 /**
  * Read fields

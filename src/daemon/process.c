@@ -65,3 +65,9 @@ error:
     return -1;
 }
 
+const char *process_id (struct process *proccess)
+{
+    // XXX: not yet known
+    return "XXX";
+}
+

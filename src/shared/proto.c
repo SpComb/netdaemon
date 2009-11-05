@@ -4,22 +4,33 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *msg, void *ctx)
+/**
+ * Parse out the proto_msg
+ */
+int proto_cmd_parse (struct proto_msg *msg)
 {
-    uint16_t cmd;
-    struct proto_cmd_handler *cmd_handler;
-
-    // read the message id
-    if (proto_read_uint32(msg, &msg->id))
+    // read the message id and cmd
+    if (
+            proto_read_uint32(msg, &msg->id)
+        ||  proto_read_uint16(msg, &msg->cmd)
+    )
         return -1;
 
-    // read the command code
-    if (proto_read_uint16(msg, &cmd))
+    // ok
+    return 0;
+}
+
+int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *in, struct proto_msg *out, void *ctx)
+{
+    struct proto_cmd_handler *cmd_handler;
+
+    // parse packet
+    if (proto_cmd_parse(in))
         return -1;
 
     // find the right handler
     for (cmd_handler = cmd_handlers; cmd_handler->cmd && cmd_handler->handler_func; cmd_handler++) {
-        if (cmd_handler->cmd == cmd)
+        if (cmd_handler->cmd == in->cmd)
             break;
     }
 
@@ -27,23 +38,29 @@ int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_ms
         return ENOTSUP;
 
     // dispatch
-    return cmd_handler->handler_func(msg, ctx);
+    return cmd_handler->handler_func(in, out, ctx);
 }
 
 int proto_msg_init (struct proto_msg *msg, char *buf, size_t len)
 {
+    // buf
     msg->buf = buf;
     msg->len = len;
     msg->offset = 0;
+
+    // info
+    msg->id = 0;
+    msg->cmd = 0;
     
     // ok
     return 0;
 }
 
-int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd, uint32_t id)
+int proto_cmd_start (struct proto_msg *msg, uint32_t id, enum proto_cmd cmd)
 {
-    if (proto_msg_init(msg, buf, len))
-        return -1;
+    // store for reference
+    msg->id = id;
+    msg->cmd = cmd;
 
     // write id
     if (proto_write_uint32(msg, id))
@@ -51,6 +68,26 @@ int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd
     
     // write command code
     if (proto_write_uint16(msg, cmd))
+        return -1;
+
+    // ok
+    return 0;
+}
+
+int proto_cmd_reply (struct proto_msg *msg, struct proto_msg *req, enum proto_cmd cmd)
+{
+    // just use the req's id as the resp id
+    return proto_cmd_start(msg, req->id, cmd);
+}
+
+int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, uint32_t id, enum proto_cmd cmd)
+{
+    // init buffer
+    if (proto_msg_init(msg, buf, len))
+        return -1;
+
+    // init cmd
+    if (proto_cmd_start(msg, id, cmd))
         return -1;
 
     // ok

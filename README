@@ -25,7 +25,7 @@ In operational mode, the client can:
         * send signals
         * recieve process status updates (killed, termination, etc.)
     * detach from the process and attach to a new one
-    * start a new process
+    * start a new process (and attach to it)
 
 Each client connection can, at most, be attached to one process at a time.
 

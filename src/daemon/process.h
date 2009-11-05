@@ -41,5 +41,10 @@ struct process {
  */
 int process_start (struct process **proc_ptr, const struct process_exec_info *exec_info);
 
+/**
+ * Return the opaque process ID as a NUL-terminated string
+ */
+const char *process_id (struct process *proccess);
+
 
 #endif

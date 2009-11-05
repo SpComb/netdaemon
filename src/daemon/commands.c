@@ -5,25 +5,36 @@
 #include "errno.h"
 
 /**
+ * [Server -> Client] CMD_ATTACH
+ *
+ * Write out the content of the CMD_ATTACH packet based on the client's current process
+ */
+static int msg_attached (struct proto_msg *out, struct client *client)
+{
+    return proto_write_str(out, process_id(client->process));
+}
+
+/**
  * [Client -> Server] CMD_HELLO
  */
-static int cmd_hello (struct proto_msg *msg, void *ctx)
+static int cmd_hello (struct proto_msg *req, struct proto_msg *out, void *ctx)
 {
     struct client *client = ctx;
     uint16_t proto_version;
 
-    if (proto_read_uint16(msg, &proto_version))
+    if (proto_read_uint16(req, &proto_version))
         return -1;
 
     log_info("proto_version=%u", proto_version);
-
+    
+    // XXX: reply with CMD_HELLO
     return 0;
 }
 
 /**
  * [Client -> Server] CMD_START
  */
-static int cmd_start (struct proto_msg *msg, void *ctx)
+static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
 {
     struct client *client = ctx;
     uint16_t len, argv_len;
@@ -37,15 +48,15 @@ static int cmd_start (struct proto_msg *msg, void *ctx)
     
     // read path
     if (
-            proto_read_uint16(msg, &len)
+            proto_read_uint16(req, &len)
         ||  !(exec_info.path = alloca(len + 1))
-        ||  _proto_read_str(msg, exec_info.path, len)
+        ||  _proto_read_str(req, exec_info.path, len)
     )
         goto error;
     
     // read argv
     if (
-            proto_read_uint16(msg, &argv_len)
+            proto_read_uint16(req, &argv_len)
         ||  !(exec_info.argv = alloca((1 + argv_len + 1) * sizeof(char *)))
     )
         goto error;
@@ -59,9 +70,9 @@ static int cmd_start (struct proto_msg *msg, void *ctx)
     for (i = 0; i < argv_len; i++) {
         // read arg
         if (
-                proto_read_uint16(msg, &len)
+                proto_read_uint16(req, &len)
             ||  !(arg = alloca(len + 1))
-            ||  _proto_read_str(msg, arg, len)
+            ||  _proto_read_str(req, arg, len)
         )
             goto error;       
 
@@ -81,7 +92,14 @@ static int cmd_start (struct proto_msg *msg, void *ctx)
     if (daemon_process_start(client->daemon, &client->process, &exec_info))
         return errno;
     
-    // yay
+    // yay, respond with CMD_ATTACHED
+    if (
+            proto_cmd_reply(out, req, CMD_ATTACHED)
+        ||  msg_attached(out, client)
+    )
+        goto error;
+
+    // ok
     return 0;
 
 error:

@@ -42,13 +42,13 @@ static void client_disconnected (struct client *client)
 /**
  * Fatal client error. Attempt to send a terminal error packet, and close the connection
  */
-static void client_error (struct client *client, int error)
+static void client_abort (struct client *client, int error)
 {
     char buf[512];
     struct proto_msg msg;
 
     // build CMD_ERROR packet
-    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_ERROR, 0))
+    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_ABORT, 0))
         goto error;
 
     // add fields
@@ -67,26 +67,31 @@ static void client_error (struct client *client, int error)
 
 error:
     // warn
-    log_warn_errno("[%p] Unable to send CMD_ERROR", client);
+    log_warn_errno("[%p] Unable to send CMD_ABORT", client);
 }
 
 /**
- * Reply to the given command message with the given reply code
+ * Reply to the given command message with the given reply code, using either CMD_OK or CMD_ERROR.
  */
 static int client_reply (struct client *client, struct proto_msg *req, int error)
 {
+    // XXX: use reply-buf from client_on_msg instead?
     char buf[512];
     struct proto_msg msg;
 
-    // build CMD_REPLY packet
-    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_REPLY, req->id))
+    // init out-msg
+    if (proto_msg_init(&msg, buf, sizeof(buf)))
+        return -1;
+
+    // build CMD_* packet
+    if (proto_cmd_reply(&msg, req, error ? CMD_ERROR : CMD_OK))
         return -1;
 
     // write reply
-    if (
+    if (error && (
             proto_write_int32(&msg, error)
         ||  proto_write_str(&msg, strerror(error))
-    )
+    ))
         return -1;
 
     // send
@@ -105,21 +110,37 @@ static int client_reply (struct client *client, struct proto_msg *req, int error
  *
  * Returns an error in case the client did something horrible and should be disconnected.
  */
-static int client_on_msg (struct client *client, struct proto_msg *msg)
+static int client_on_msg (struct client *client, struct proto_msg *request)
 {
+    struct proto_msg reply;
+    char buf[ND_PROTO_MSG_MAX];
     int err = 0;
 
+    // prep reply packet
+    if (proto_msg_init(&reply, buf, sizeof(buf)))
+        goto error;
+
     // dispatch to command handler
-    if ((err = proto_cmd_dispatch(daemon_command_handlers, msg, client)) < 0)
+    if ((err = proto_cmd_dispatch(daemon_command_handlers, request, &reply, client)) < 0)
         // system error
-        client_error(client, errno);
+        goto error;
+
+    else if (reply.cmd)
+        // send reply packet
+        err = client_msg(client, &reply);
 
     else
-        // err=0 -> success, or err>0 -> non-fatal error reply
-        err = client_reply(client, msg, err);
+        // generic reply; err=0 -> success, or err>0 -> non-fatal error reply
+        err = client_reply(client, request, err);
 
     // ok
     return err;
+        
+error:
+    // error while handling req    
+    client_abort(client, errno);
+
+    return -1;
 }
 
 /**

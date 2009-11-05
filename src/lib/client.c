@@ -65,7 +65,7 @@ int nd_cmd_hello (struct nd_client *client)
     struct proto_msg msg;
 
     // init with CMD_HELLO
-    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_HELLO, 0))
+    if (proto_cmd_init(&msg, buf, sizeof(buf), 0, CMD_HELLO))
         return -1;
 
     // add current proto version
@@ -82,7 +82,7 @@ int nd_cmd_start (struct nd_client *client, const char *path, const char *argv[]
     struct proto_msg msg;
 
     // start CMD_EXEC
-    if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_START, 0))
+    if (proto_cmd_init(&msg, buf, sizeof(buf), 0, CMD_START))
         goto error;
 
     // write fields
