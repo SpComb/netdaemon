@@ -6,26 +6,30 @@
  *
  * Client sessions
  */
-#include "shared/select.h"
+#include "daemon.h"
 #include "process.h"
 
 /**
  * Per-client connection state
  */
 struct client {
+    /** Daemon we are running under */
+    struct daemon *daemon;
+
     /** socket IO info */
     struct select_fd fd;
 
     /** Attached process */
-    struct process *proc;
+    struct process *process;
 };
 
 /**
  * Construct a new client and activate it.
  *
+ * @param daemon daemon we are running under
  * @param client_ptr returned client struct if not NULL
  * @param sock connected socket fd of the SOCK_SEQPACKET type
  */
-int client_add_seqpacket (int sock);
+int client_add_seqpacket (struct daemon *daemon, int sock);
 
 #endif

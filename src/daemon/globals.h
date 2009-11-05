@@ -6,9 +6,9 @@
  *
  * Definitions of global variables for the daemon process
  */
-#include "shared/select.h"
+#include "daemon.h"
 
-/** Global main select-loop */
-extern struct select_loop daemon_select_loop;
+/** Global daemon state */
+extern struct daemon daemon_state;
 
 #endif

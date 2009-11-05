@@ -9,6 +9,10 @@ int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_ms
     uint16_t cmd;
     struct proto_cmd_handler *cmd_handler;
 
+    // read the message id
+    if (proto_read_uint32(msg, &msg->id))
+        return -1;
+
     // read the command code
     if (proto_read_uint16(msg, &cmd))
         return -1;
@@ -19,12 +23,8 @@ int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_ms
             break;
     }
 
-    if (!(cmd_handler->cmd && cmd_handler->handler_func)) {
-        // no matching handler found
-        errno = ENOTSUP;
-        
-        return -1;
-    }
+    if (!(cmd_handler->cmd && cmd_handler->handler_func))
+        return ENOTSUP;
 
     // dispatch
     return cmd_handler->handler_func(msg, ctx);
@@ -40,9 +40,13 @@ int proto_msg_init (struct proto_msg *msg, char *buf, size_t len)
     return 0;
 }
 
-int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd)
+int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd, uint32_t id)
 {
     if (proto_msg_init(msg, buf, len))
+        return -1;
+
+    // write id
+    if (proto_write_uint32(msg, id))
         return -1;
     
     // write command code
@@ -73,13 +77,23 @@ int proto_read (struct proto_msg *msg, void *buf, size_t len)
 
 int proto_read_uint16 (struct proto_msg *msg, uint16_t *val_ptr)
 {
-    uint16_t val;
-
-    if (proto_read(msg, &val, sizeof(val)))
+    if (proto_read(msg, val_ptr, sizeof(*val_ptr)))
         return -1;
 
     // convert
-    *val_ptr = ntohs(val);
+    *val_ptr = ntohs(*val_ptr);
+
+    // ok
+    return 0;
+}
+
+int proto_read_uint32 (struct proto_msg *msg, uint32_t *val_ptr)
+{
+    if (proto_read(msg, val_ptr, sizeof(*val_ptr)))
+        return -1;
+
+    // convert
+    *val_ptr = ntohl(*val_ptr);
 
     // ok
     return 0;
@@ -119,6 +133,13 @@ int proto_write (struct proto_msg *msg, const void *buf, size_t len)
 int proto_write_uint16 (struct proto_msg *msg, uint16_t val)
 {
     val = htons(val);
+
+    return proto_write(msg, &val, sizeof(val));
+}
+
+int proto_write_uint32 (struct proto_msg *msg, uint32_t val)
+{
+    val = htonl(val);
 
     return proto_write(msg, &val, sizeof(val));
 }

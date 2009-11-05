@@ -41,7 +41,7 @@ static int process_spawn (struct process *proc, const struct process_exec_info *
         return 0;
 }
 
-int process_create (struct process **proc_ptr, const struct process_exec_info *exec_info)
+int process_start (struct process **proc_ptr, const struct process_exec_info *exec_info)
 {
     struct process *proc;
 

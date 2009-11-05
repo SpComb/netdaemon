@@ -10,6 +10,28 @@ daemon and issue commands to control these processes. The daemon offers the foll
     * exec path (direct filesystem path)
     * exec arguments
     * exec environment
-
     * sending signals
     * watching status
+
+Each connection to the daemon undergoes protocol handshake and authentication stages before proceeding to actual
+operation.
+
+In operational mode, the client can:
+    * query the listing of active processes
+    * attach to a running process
+    * perform operations on the attached process and recieve operational status
+        * send data to stdin
+        * recieve data from stdout/stderr
+        * send signals
+        * recieve process status updates (killed, termination, etc.)
+    * detach from the process and attach to a new one
+    * start a new process
+
+Each client connection can, at most, be attached to one process at a time.
+
+Each process initiated has an unique ID handle associated with it, which can be used by the clients to identify and
+attach to a process after starting one and reconnecting.
+
+To start a process or attach to one, the daemon performs authorization of the process's permissions against the client's
+authenticated user.
+

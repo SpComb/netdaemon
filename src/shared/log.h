@@ -76,6 +76,7 @@ void _log_msg_va2 (enum log_level level, const char *func, const char *fmt1, va_
  * Log using errno.
  */
 #define log_errno(...) _log_errno(LOG_ERROR, __func__, __VA_ARGS__)
+#define log_warn_errno(...) _log_errno(LOG_WARN, __func__, __VA_ARGS__)
 void _log_errno (enum log_level level, const char *func, const char *format, ...)
     __attribute__ ((format (printf, 3, 4)));
 

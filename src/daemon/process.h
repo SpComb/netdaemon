@@ -5,6 +5,7 @@
  * @file
  */
 #include <sys/types.h>
+#include <sys/queue.h>
 
 
 /**
@@ -27,6 +28,9 @@ struct process_exec_info {
 struct process {
     /** Currently running process ID */
     pid_t pid;
+
+    /** Member of daemon process list */
+    LIST_ENTRY(process) daemon_processes;
 };
 
 /**
@@ -35,7 +39,7 @@ struct process {
  * @param proc_ptr  returned process struct
  * @param exec_info info required for exec
  */
-int process_create (struct process **proc_ptr, const struct process_exec_info *exec_info);
+int process_start (struct process **proc_ptr, const struct process_exec_info *exec_info);
 
 
 #endif

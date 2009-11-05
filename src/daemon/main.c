@@ -15,20 +15,22 @@ static const char *SERVICE_UNIX_PATH_DEFAULT = "run/netdaemon";
 /**
  * Globals
  */
-struct select_loop daemon_select_loop;
+struct daemon daemon_state;
 
 int main (int argc, char **argv)
 {
-    struct service *service;
-    
     const char *service_unix_path = SERVICE_UNIX_PATH_DEFAULT;
 
-    // init
-    select_loop_init(&daemon_select_loop);
+    // init daemon
+    if (daemon_init(&daemon_state)) {
+        log_errno("daemon_init");
+
+        goto error;
+    }
 
     // open service
-    if (service_open_unix(&service, service_unix_path) < 0) {
-        log_errno("service_open_unix: %s", service_unix_path);
+    if (daemon_service_unix(&daemon_state, service_unix_path) < 0) {
+        log_errno("daemon_service_unix: %s", service_unix_path);
         
         goto error;
 
@@ -39,12 +41,13 @@ int main (int argc, char **argv)
     // run select loop
     log_info("Entering main loop");
 
-    if (select_loop_main(&daemon_select_loop) < 0) {
-        log_errno("select_loop_main");
+    if (daemon_main(&daemon_state) < 0) {
+        log_errno("daemon_state");
 
         goto error;
     }
 
+    // done
     return EXIT_SUCCESS;
 
 error:

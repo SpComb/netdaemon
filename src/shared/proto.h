@@ -21,7 +21,7 @@ enum proto_version {
 };
 
 /**
- * Protocol commands, uint16_t
+ * Protocol commands, uint16_t.
  */
 enum proto_cmd {
     /**
@@ -39,28 +39,30 @@ enum proto_cmd {
 
     /**
      * Client -> Server:
-     *  uint16_t        path_len
-     *  [path_len]      path
-     *  uint16_t        arg_count
-     *  [arg_count]     argv {
-     *      uint16_t        arg_len
-     *      [arg_len]       arg
+     *  [uint16_t]      path
+     *  [uint16_t]      argv {
+     *      [uint16_t]      arg
      *  }
-     *  uint16_t        env_count
-     *  [env_count]     envp {
-     *      uint16_t        env_len
-     *      [env_len]       env
+     *  [uint16_t]      envp {
+     *      [uint16_t]      env
      *  }
      */
-    CMD_EXEC    = 0x0101,
+    CMD_START    = 0x0101,
+
 
     /**
-     * Server -> Client:
-     *  int32_t        errno
-     *  uint16_t        errmsg_len
-     *  [errmsg_len]    errmsg
+     * Server -> Client: associated command processed, generic reply code
+     *  int32_t         err_code
+     *  [uint16_t]      err_msg
      */
-    CMD_ERROR   = 0xff01,
+    CMD_REPLY   = 0xff01,
+
+    /**
+     * Server -> Client: Terminal error, connection will be closed
+     *  int32_t         err_code
+     *  [uint16_t]      err_msg
+     */
+    CMD_ERROR   = 0xffff,
 };
 
 /**
@@ -80,10 +82,19 @@ struct proto_msg {
 
     /** Current offset into message*/
     size_t offset;
+
+    /**
+     * Per-message handle
+     */
+    uint32_t id;
 };
 
 /**
- * Incoming message handler
+ * Incoming message handler.
+ *
+ * In case of system error (e.g. memory allocation failure, I/O error, etc), these should set an error code in errno,
+ * and return -1. In case of non-fatal protocol errors, these should simply return the relevant error code as a
+ * positive integer.
  */
 typedef int (*proto_cmd_handler_t) (struct proto_msg *msg, void *ctx);
 
@@ -99,7 +110,12 @@ struct proto_cmd_handler {
 };
 
 /**
- * Read a cmd from the given proto_msg, and then dispatch it to the correct handler
+ * Read a cmd from the given proto_msg, and then dispatch it to the correct handler.
+ *
+ * As per proto_cmd_handler_t, this will set errno and return -1 in case of system error, or return a positive error
+ * code in case of non-fatal protocol error.
+ *
+ * Returns ENOTSUP if no matching command handler was found.
  */
 int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *msg, void *ctx);
 
@@ -109,15 +125,16 @@ int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_ms
 int proto_msg_init (struct proto_msg *msg, char *buf, size_t len);
 
 /**
- * Initialize a proto_msg using the given storage buffer and command code
+ * Initialize a proto_msg using the given storage buffer, command code and message id
  */
-int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd);
+int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, enum proto_cmd cmd, uint32_t id);
 
 /**
  * Read fields
  */
 int proto_read (struct proto_msg *msg, void *buf, size_t len);
 int proto_read_uint16 (struct proto_msg *msg, uint16_t *val_ptr);
+int proto_read_uint32 (struct proto_msg *msg, uint32_t *val_ptr);
 
 /**
  * Read a str of [len] bytes from the msg, storing it and a terminating NUL byte into buf, which mus store at least
@@ -136,6 +153,7 @@ int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len);
  */
 int proto_write (struct proto_msg *msg, const void *buf, size_t len);
 int proto_write_uint16 (struct proto_msg *msg, uint16_t val);
+int proto_write_uint32 (struct proto_msg *msg, uint32_t val);
 int proto_write_int32 (struct proto_msg *msg, int32_t val);
 
 /**

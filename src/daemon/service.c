@@ -51,7 +51,7 @@ static int service_on_accept (int fd, short what, void *arg)
     log_info("Accept service connection on [%s]: fd=%d", service_name(service), client_sock);
     
     // construct client state
-    if (client_add_seqpacket(client_sock) < 0) {
+    if (client_add_seqpacket(service->daemon, client_sock) < 0) {
         log_warn("Dropping client connection: client_add_seqpacket: %s", strerror(errno));
 
         close(client_sock);
@@ -62,7 +62,7 @@ static int service_on_accept (int fd, short what, void *arg)
     return SELECT_OK;
 }
 
-int service_open_unix (struct service **service_ptr, const char *path)
+int service_open_unix (struct daemon *daemon, struct service **service_ptr, const char *path)
 {
     struct service *service = NULL;
     struct sockaddr_un sa;
@@ -84,6 +84,8 @@ int service_open_unix (struct service **service_ptr, const char *path)
     if ((service = calloc(1, sizeof(*service))) == NULL)
         goto error;  // ENOMEM
 
+    // init
+    service->daemon = daemon;
 
     // construct socket
     if ((sock = socket(AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
@@ -117,7 +119,7 @@ int service_open_unix (struct service **service_ptr, const char *path)
     select_fd_init(&service->fd, sock, FD_READ, service_on_accept, service);
 
     // activate
-    select_loop_add(&daemon_select_loop, &service->fd);
+    select_loop_add(&daemon->select_loop, &service->fd);
 
     // ok
     *service_ptr = service;
@@ -135,7 +137,8 @@ error:
 void service_destroy (struct service *service)
 {
     // remove from select loop
-    select_loop_del(&daemon_select_loop, &service->fd);
+    // XXX: still unsafe
+    select_loop_del(&service->daemon->select_loop, &service->fd);
     
     // close socket
     if (service->fd.fd >= 0)

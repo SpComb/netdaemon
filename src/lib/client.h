@@ -31,9 +31,9 @@ int nd_open_unix (struct nd_client **client_ptr, const char *path);
 int nd_cmd_hello (struct nd_client *client);
 
 /**
- * Send a CMD_EXEC message to the service
+ * Send a CMD_START message to the service
  */
-int nd_cmd_exec (struct nd_client *client, const char *path, const char *argv[], const char *envp[]);
+int nd_cmd_start (struct nd_client *client, const char *path, const char *argv[], const char *envp[]);
 
 /**
  * Force-close the given client connection, releasing any allocated resources and invalidating the nd_client*.
