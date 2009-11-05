@@ -18,7 +18,7 @@ static int client_sock (struct client *client)
 /**
  * Send the given proto_msg to this client
  */
-static int client_msg (struct client *client, struct proto_msg *msg)
+static int client_send (struct client *client, struct proto_msg *msg)
 {
     return proto_send_seqpacket(client_sock(client), msg);
 }
@@ -76,7 +76,7 @@ static void client_abort (struct client *client, int error)
         goto error;
 
     // send
-    if (client_msg(client, &msg))
+    if (client_send(client, &msg))
         goto error;
     
     // ok
@@ -115,13 +115,39 @@ static int client_reply (struct client *client, struct proto_msg *req, int error
         return -1;
 
     // send
-    if (client_msg(client, &msg))
+    if (client_send(client, &msg))
         return -1;
 
     // ok
     return 0;
 }
 
+/**
+ * Send a CMD_DATA packet to the client
+ */
+static int client_cmd_data (struct client *client, enum process_fd channel, const char *buf, size_t len)
+{
+    struct proto_msg msg;
+    char msg_buf[ND_PROTO_MSG_MAX];
+
+    // prep CMD_DATA
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), 0, CMD_DATA))
+        return -1;
+
+    // write packet
+    if (
+            proto_write_uint16(&msg, channel)
+        ||  proto_write(&msg, buf, len)
+    )
+        return -1;
+
+    // send
+    if (client_send(client, &msg))
+        return -1;
+
+    // ok
+    return 0;
+}
 
 /**
  * Client got a message.
@@ -147,7 +173,7 @@ static int client_on_msg (struct client *client, struct proto_msg *request)
 
     else if (reply.cmd)
         // send reply packet
-        err = client_msg(client, &reply);
+        err = client_send(client, &reply);
 
     else
         // generic reply; err=0 -> success, or err>0 -> non-fatal error reply
@@ -220,6 +246,10 @@ void client_on_process_data (struct process *process, enum process_fd channel, c
 {
     struct client *client = ctx;
 
-    log_debug("[%p] Got data on %d from process [%p]: %.*s", client, channel, process, len, buf);
-
+    log_debug("[%p] Got data on %d from process [%p]: %.*s", client, channel, process, (int) len, buf);
+    
+    // send packet
+    if (client_cmd_data(client, channel, buf, len))
+        client_abort(client, errno);
 }
+

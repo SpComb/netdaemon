@@ -56,6 +56,13 @@ enum proto_cmd {
     CMD_ATTACHED    = 0x0110,
 
     /**
+     * Server -> Client: data from process
+     *  uint16_t        channel
+     *  [uint16_t]      data
+     */
+    CMD_DATA        = 0x0201,
+
+    /**
      * Server -> Client: Associated command executed ok, no specific reply data
      */
     CMD_OK          = 0xff00,
