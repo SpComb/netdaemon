@@ -11,8 +11,6 @@
 #include <string.h>
 #include <getopt.h>
 
-static const char *SERVICE_UNIX_PATH_DEFAULT = "run/netdaemon";
-
 /**
  * Globals
  */
