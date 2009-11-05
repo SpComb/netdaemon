@@ -87,6 +87,8 @@ void _log_exit (enum log_level level, int exit_code, const char *func, const cha
     __attribute__ ((format (printf, 4, 5)))
     __attribute__ ((noreturn));
 
+// for abort()
+#include <stdlib.h>
 
 /**
  * log_fatal + exit failure
@@ -96,7 +98,7 @@ void _log_exit (enum log_level level, int exit_code, const char *func, const cha
 /**
  * log_perr + exit failure
  */
-#define FATAL_PERROR(...) do { _log_perr(LOG_FATAL, __func__, __VA_ARGS__); abort(); } while (0)
+#define FATAL_ERRNO(...) do { _log_errno(LOG_FATAL, __func__, __VA_ARGS__); abort(); } while (0)
 
 /**
  * Exit with given code, also logging a message at LOG_INFO with an [EXIT] tag

@@ -85,7 +85,7 @@ int proto_read_uint16 (struct proto_msg *msg, uint16_t *val_ptr)
     return 0;
 }
 
-int proto_read_str (struct proto_msg *msg, char *buf, uint16_t len)
+int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len)
 {
     // read str value
     if (proto_read(msg, buf, len))
@@ -190,7 +190,7 @@ int proto_recv_seqpacket (int sock, struct proto_msg *msg)
     
     } else if (ret == 0) {
         // EOF
-        // XXX: errno = ...;
+        errno = EINVAL;
 
         return -1;
 

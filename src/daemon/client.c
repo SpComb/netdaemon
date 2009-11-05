@@ -55,10 +55,12 @@ static int client_error (struct client *client, int error)
     if (proto_cmd_init(&msg, buf, sizeof(buf), CMD_ERROR))
         goto error;
 
+    // 
+
     // add fields
     if (
-            proto_write_int32(&msg, errno)
-        ||  proto_write_str(&msg, strerror(errno))
+            proto_write_int32(&msg, error)
+        ||  proto_write_str(&msg, strerror(error))
     )
         goto error;
 
@@ -101,20 +103,63 @@ static int client_on_hello (struct proto_msg *msg, void *ctx)
 static int client_on_exec (struct proto_msg *msg, void *ctx)
 {
     struct client *client = ctx;
-    uint16_t path_len;
-    char *path;
+    uint16_t len, argv_len;
+    struct process_exec_info exec_info;
+    char *arg, *env;
+    int i;
+
+    // verify that we are not attached to any process already
+    if (client->proc)
+        return EBUSY;
     
     // read path
     if (
-            proto_read_uint16(msg, &path_len)
-        ||  !(path = alloca(path_len + 1))
-        ||  proto_read_str(msg, path, path_len)
+            proto_read_uint16(msg, &len)
+        ||  !(exec_info.path = alloca(len + 1))
+        ||  _proto_read_str(msg, exec_info.path, len)
+    )
+        goto error;
+    
+    // read argv
+    if (
+            proto_read_uint16(msg, &argv_len)
+        ||  !(exec_info.argv = alloca((1 + argv_len + 1) * sizeof(char *)))
     )
         goto error;
 
-    // log
-    log_info("path=%u:%s", path_len, path);
+    // store argv[0]
+    exec_info.argv[0] = exec_info.path;
 
+    // log
+    log_info("path=%u:%s, argv=%u:", len, exec_info.path, argv_len);
+
+    for (i = 0; i < argv_len; i++) {
+        // read arg
+        if (
+                proto_read_uint16(msg, &len)
+            ||  !(arg = alloca(len + 1))
+            ||  _proto_read_str(msg, arg, len)
+        )
+            goto error;       
+
+        log_info("\targv[%i] : %s", i + 1, arg);
+
+        exec_info.argv[i + 1] = arg;
+    }
+
+    // terminate
+    exec_info.argv[i] = NULL;
+    
+    // XXX: envp
+    exec_info.envp = alloca(1 * sizeof(char *));
+    exec_info.envp[0] = NULL;
+
+    // spawn new process
+    if (process_create(&client->proc, &exec_info))
+        goto error;
+    
+    // yay
+    return 0;
 
 error:
     return -1;
@@ -139,7 +184,12 @@ static int client_on_msg (struct client *client, struct proto_msg *msg)
     // dispatch to command handler
     // XXX: what form of error handling?
     if ((err = proto_cmd_dispatch(client_cmd_handlers, msg, client)) < 0)
-        return client_error(client, -err);
+        // fatal error
+        return client_error(client, errno);
+
+    else if (err)
+        // non-fatal error
+        return client_error(client, err);
 
     // ok
     return err;
@@ -167,8 +217,8 @@ static int client_on_read_seqpacket (int fd, short what, void *arg)
     return client_on_msg(client, &msg);
 
 error:
-    // XXX: return to select_loop
-    return -1;
+    // XXX: how return to select_loop?
+    return client_disconnected(client);
 }
 
 int client_add_seqpacket (int sock)

@@ -7,6 +7,7 @@
  * Client sessions
  */
 #include "shared/select.h"
+#include "process.h"
 
 /**
  * Per-client connection state
@@ -14,6 +15,9 @@
 struct client {
     /** socket IO info */
     struct select_fd fd;
+
+    /** Attached process */
+    struct process *proc;
 };
 
 /**

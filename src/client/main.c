@@ -28,11 +28,7 @@ int main (int argc, char **argv)
     }
 
     // send exec command
-    if (nd_cmd_exec(client,
-        "foo",
-        ((const char *[]){ "arg1", "arg2", NULL }),
-        ((const char *[]){ "foo=bar", NULL })
-    )) {
+    if (nd_cmd_exec(client, argv[2], argv + 3, ((const char *[]){ NULL }))) {
         log_errno("nd_cmd_exec");
 
         return EXIT_FAILURE;
