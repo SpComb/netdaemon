@@ -1,5 +1,6 @@
 #include "process.h"
 #include "shared/log.h"
+#include "client.h"
 
 #include <unistd.h>
 
@@ -43,24 +44,29 @@ static int process_spawn (struct process *proc, const struct process_exec_info *
 
 int process_start (struct process **proc_ptr, const struct process_exec_info *exec_info)
 {
-    struct process *proc;
+    struct process *process;
 
     // alloc
-    if ((proc = calloc(1, sizeof(*proc))) == NULL)
+    if ((process = calloc(1, sizeof(*process))) == NULL)
         return -1;
 
+    // init
+    LIST_INIT(&process->clients);
+
     // start
-    if (process_spawn(proc, exec_info) < 0)
+    if (process_spawn(process, exec_info) < 0)
         goto error;
 
+    log_info("[%p] Spawned process '%s' -> pid=%d as '%s'", process, exec_info->path, process->pid, process_id(process));
+
     // ok
-    *proc_ptr = proc;
+    *proc_ptr = process;
 
     return 0;
 
 error:
     // XXX: proper cleanup
-    free(proc);
+    free(process);
 
     return -1;
 }
@@ -69,5 +75,24 @@ const char *process_id (struct process *proccess)
 {
     // XXX: not yet known
     return "XXX";
+}
+
+int process_attach (struct process *process, struct client *client)
+{
+    // add to list
+    LIST_INSERT_HEAD(&process->clients, client, process_clients);
+
+    log_debug("[%p] Client [%p] attached", process, client);
+
+    // ok
+    return 0;
+}
+
+void process_detach (struct process *process, struct client *client)
+{
+    // remove from list
+    LIST_REMOVE(client, process_clients);
+    
+    log_debug("[%p] Client [%p] detached", process, client);
 }
 

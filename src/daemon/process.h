@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 
-
 /**
  * Info required for process exec
  */
@@ -29,6 +28,9 @@ struct process {
     /** Currently running process ID */
     pid_t pid;
 
+    /** List of attached clients */
+    LIST_HEAD(process_clients, client) clients;
+
     /** Member of daemon process list */
     LIST_ENTRY(process) daemon_processes;
 };
@@ -46,5 +48,14 @@ int process_start (struct process **proc_ptr, const struct process_exec_info *ex
  */
 const char *process_id (struct process *proccess);
 
+/**
+ * Attach this client to this process, streaming out stdout/err data
+ */
+int process_attach (struct process *process, struct client *client);
+
+/**
+ * Detach given process
+ */
+void process_detach (struct process *process, struct client *client);
 
 #endif

@@ -24,18 +24,31 @@ static int client_msg (struct client *client, struct proto_msg *msg)
 }
 
 /**
- * Client disconnected, dispose of it
+ * Destroy the given client, releasing any resources
  */
-static void client_disconnected (struct client *client)
+void client_destroy (struct client *client)
 {
-    // remove from select loop
+    // remove from select loop if added
     select_loop_del(&client->daemon->select_loop, &client->fd);
     
     // release the socket
     close(client_sock(client));
 
-    // XXX: breaks socket_loop_run
+    // detach from process if attached
+    if (client->process)
+        process_detach(client->process, client);
+
+    // release state
     free(client);
+}
+
+/**
+ * Client disconnected, dispose of it
+ */
+static void client_disconnected (struct client *client)
+{
+    // XXX: breaks socket_loop_run
+    client_destroy(client);
 }
 
 

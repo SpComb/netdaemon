@@ -21,6 +21,9 @@ struct client {
 
     /** Attached process */
     struct process *process;
+
+    /** Process's consumer list */
+    LIST_ENTRY(client) process_clients;
 };
 
 /**

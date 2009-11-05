@@ -91,13 +91,20 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
     // spawn new process
     if (daemon_process_start(client->daemon, &client->process, &exec_info))
         return errno;
-    
-    // yay, respond with CMD_ATTACHED
-    if (
-            proto_cmd_reply(out, req, CMD_ATTACHED)
-        ||  msg_attached(out, client)
-    )
-        goto error;
+
+    // XXX: this should be a client_attach(...) function
+    {
+        // attach
+        if (process_attach(client->process, client))
+            abort();
+        
+        // yay, respond with CMD_ATTACHED
+        if (
+                proto_cmd_reply(out, req, CMD_ATTACHED)
+            ||  msg_attached(out, client)
+        )
+            abort();
+    }
 
     // ok
     return 0;

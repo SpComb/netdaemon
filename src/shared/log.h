@@ -102,7 +102,7 @@ void _log_exit (enum log_level level, int exit_code, const char *func, const cha
 #define FATAL_ERRNO(...) do { _log_errno(LOG_FATAL, __func__, __VA_ARGS__); abort(); } while (0)
 
 /**
- * Exit with given code, also logging a message at LOG_INFO with an [EXIT] tag
+ * Exit with given code, also logging a message at LOG_... with an [EXIT] tag
  */
 #define EXIT_INFO(exit_code, ...)  log_exit(LOG_INFO,  exit_code, __VA_ARGS__)
 #define EXIT_WARN(exit_code, ...)  log_exit(LOG_WARN,  exit_code, __VA_ARGS__)
