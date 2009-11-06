@@ -288,6 +288,17 @@ void client_on_process_data (struct process *process, enum proto_channel channel
         client_abort(client, errno);
 }
 
+void client_on_process_eof (struct process *process, enum proto_channel channel, void *ctx)
+{
+    struct client *client = ctx;
+
+    log_debug("[%p] Got EOF on %d from process [%p]", client, channel, process);
+    
+    // send packet
+    if (client_cmd_data(client, channel, "", 0))
+        client_abort(client, errno);
+}
+
 void client_on_process_status (struct process *process, enum proto_process_status status, int code, void *ctx)
 {
     struct client *client = ctx;

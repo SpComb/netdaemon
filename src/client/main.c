@@ -148,9 +148,16 @@ static const struct command {
  */
 static int on_data (const char *buf, size_t len, FILE *stream)
 {
-    // write out
-    if (fwrite(buf, len, 1, stream) < 0)
-        return -1;
+    if (len) {
+        // write out
+        if (fwrite(buf, len, 1, stream) < 0)
+            return -1;
+
+    } else {
+        // EOF
+        if (fclose(stream) < 0)
+            return -1;
+    }
 
     // ok
     return 0;

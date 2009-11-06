@@ -12,7 +12,7 @@
 /**
  * Read-cctivity on process fd
  */
-static int process_on_read (struct process *process, enum proto_channel channel, int fd)
+static int process_on_read (struct process *process, enum proto_channel channel, int fd, struct select_fd *select_fd)
 {
     char buf[4096];
     ssize_t ret;
@@ -24,12 +24,16 @@ static int process_on_read (struct process *process, enum proto_channel channel,
 
     else if (ret == 0)
         // eof
-        select_loop_del(&process->daemon->select_loop, &process->std_out);
+        select_loop_del(&process->daemon->select_loop, select_fd);
 
     // pass off to each attached client
     LIST_FOREACH(client, &process->clients, process_clients) {
         // callback
-        client_on_process_data(process, channel, buf, ret, client);
+        if (ret)
+            client_on_process_data(process, channel, buf, ret, client);
+
+        else
+            client_on_process_eof(process, channel, client);
     }
     
     // ok
@@ -47,7 +51,7 @@ static int process_on_stdout (int fd, short what, void *ctx)
 {
     struct process *process = ctx;
     
-    return process_on_read(process, CHANNEL_STDOUT, fd);
+    return process_on_read(process, CHANNEL_STDOUT, fd, &process->std_out);
 }
 
 /**
@@ -57,7 +61,7 @@ static int process_on_stderr (int fd, short what, void *ctx)
 {
     struct process *process = ctx;
     
-    return process_on_read(process, CHANNEL_STDERR, fd);
+    return process_on_read(process, CHANNEL_STDERR, fd, &process->std_err);
 }
 
 /**
@@ -84,14 +88,10 @@ static void _process_exec (const struct process_exec_info *exec_info, const stru
         FATAL_ERRNO("dup2");
 
     // close old fds
-    if (io_info->std_in != STDIN_FILENO)
-        close(io_info->std_in);
-
-    if (io_info->std_out != STDOUT_FILENO)
-        close(io_info->std_out);
-
-    if (io_info->std_err != STDERR_FILENO)
-        close(io_info->std_err);
+    // XXX: fine as long as io_info->std_in != STDIN_FILENO
+    close(io_info->std_in);
+    close(io_info->std_out);
+    close(io_info->std_err);
     
     // exec
     if (execve(exec_info->path, exec_info->argv, exec_info->envp) < 0)
@@ -123,9 +123,9 @@ static int process_spawn (struct process *process, const struct process_exec_inf
 
     // set flags
     if (
-            fd_flags(proc_io.std_in,  O_CLOEXEC|O_NONBLOCK)
-        ||  fd_flags(proc_io.std_out, O_CLOEXEC|O_NONBLOCK)
-        ||  fd_flags(proc_io.std_err, O_CLOEXEC|O_NONBLOCK)
+            fd_flags(proc_io.std_in,  O_NONBLOCK)
+        ||  fd_flags(proc_io.std_out, O_NONBLOCK)
+        ||  fd_flags(proc_io.std_err, O_NONBLOCK)
     )
         goto error;
 
@@ -148,16 +148,27 @@ static int process_spawn (struct process *process, const struct process_exec_inf
         goto error;
 
     // perform fork
-    if ((process->pid = fork()) < 0)
+    if ((process->pid = fork()) < 0) {
         goto error;
 
-    else if (process->pid == 0)
+    } else if (process->pid == 0) {
+        // XXX: for some reason, it seems like O_CLOEXEC doesn't work for pipes...
+        close(proc_io.std_in);
+        close(proc_io.std_out);
+        close(proc_io.std_err);
+
         // child performs exec()
         _process_exec(exec_info, &exec_io);
 
-    else
+     } else {
+        // clean up child's pipes
+        close(exec_io.std_in);
+        close(exec_io.std_out);
+        close(exec_io.std_err);
+
         // child started, parent continues
         return 0;
+    }
 
 error:
     // XXX: close pipes?

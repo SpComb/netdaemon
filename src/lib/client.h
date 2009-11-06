@@ -22,10 +22,10 @@ struct nd_client;
  * from the running nd_* function.
  */
 struct nd_callbacks {
-    /** Recieved data from process on stdout */
+    /** Recieved data from process on stdout. In case of EOF, len == 0 */
     int (*on_stdout) (struct nd_client *client, const char *buf, size_t len, void *arg);
 
-    /** Recieved data from process on stderr */
+    /** Recieved data from process on stderr. Incase of EOF, len == 0 */
     int (*on_stderr) (struct nd_client *client, const char *buf, size_t len, void *arg);
 
     /** Process exited */
@@ -84,6 +84,8 @@ int nd_stdin_data (struct nd_client *client, const char *buf, size_t len);
  * Send EOF on stdin to the attached process.
  *
  * It is an error to send any more data to the process after this succeeds.
+ *
+ * XXX: This is equivalent to `nd_stdin_data(client, "", 0)`
  */
 int nd_stdin_eof (struct nd_client *client);
 
