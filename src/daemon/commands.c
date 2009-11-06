@@ -140,10 +140,18 @@ static int cmd_data (struct proto_msg *req, struct proto_msg *out, void *ctx)
     return client_on_cmd_data(client, channel, buf, len); 
 }
 
+// attach to process
+static int cmd_attach (struct proto_msg *req, struct proto_msg *out, void *ctx)
+{
+    struct client *client = ctx;
+   
+} 
+
 /**
  * Server-side command handlers
  */
 struct proto_cmd_handler daemon_command_handlers[] = {
+    {   CMD_ATTACH,     cmd_attach      },
     {   CMD_DATA,       cmd_data        },
     {   CMD_HELLO,      cmd_hello       },
     {   CMD_START,      cmd_start       },

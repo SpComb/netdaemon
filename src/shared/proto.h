@@ -76,6 +76,12 @@ enum proto_cmd {
     CMD_START       = 0x0101,
 
     /**
+     * Client -> Server: attach to an existing process
+     *  [uint16_t]      proc_id
+     */
+    CMD_ATTACH      = 0x0102,
+
+    /**
      * Server -> Client: attached to given process
      *  [uint16_t]      proc_id
      */
