@@ -37,7 +37,7 @@ static int cmd_hello (struct proto_msg *req, struct proto_msg *out, void *ctx)
 static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
 {
     struct client *client = ctx;
-    uint16_t len, argv_len;
+    uint16_t len;
     struct process_exec_info exec_info;
     char *arg, *env;
     int i;
@@ -47,17 +47,13 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
         return EBUSY;
     
     // read path
-    if (
-            proto_read_uint16(req, &len)
-        ||  !(exec_info.path = alloca(len + 1))
-        ||  _proto_read_str(req, exec_info.path, len)
-    )
+    if (proto_read_str(req, &exec_info.path))
         goto error;
     
     // read argv
     if (
-            proto_read_uint16(req, &argv_len)
-        ||  !(exec_info.argv = alloca((1 + argv_len + 1) * sizeof(char *)))
+            proto_read_uint16(req, &len)
+        ||  !(exec_info.argv = alloca((1 + len + 1) * sizeof(char *)))
     )
         goto error;
 
@@ -65,18 +61,14 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
     exec_info.argv[0] = exec_info.path;
 
     // log
-    log_info("path=%u:%s, argv=%u:", len, exec_info.path, argv_len);
+    log_info("path=%s, argv=%u:", exec_info.path, len);
 
-    for (i = 0; i < argv_len; i++) {
+    for (i = 0; i < len; i++) {
         // read arg
-        if (
-                proto_read_uint16(req, &len)
-            ||  !(arg = alloca(len + 1))
-            ||  _proto_read_str(req, arg, len)
-        )
+        if (proto_read_str(req, &exec_info.argv[i + 1]))
             goto error;       
 
-        log_info("\targv[%i] : %s", i + 1, arg);
+        log_info("\targv[%i] : %s", i + 1, exec_info.argv[i + 1]);
 
         exec_info.argv[i + 1] = arg;
     }

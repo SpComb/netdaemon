@@ -67,23 +67,23 @@ enum proto_cmd {
      * Client -> Server: start new process and attach to it
      *  [uint16_t]      path
      *  [uint16_t]      argv {
-     *      [uint16_t]      arg
+     *      string          arg
      *  }
      *  [uint16_t]      envp {
-     *      [uint16_t]      env
+     *      string          env
      *  }
      */
     CMD_START       = 0x0101,
 
     /**
      * Client -> Server: attach to an existing process
-     *  [uint16_t]      proc_id
+     *  string          proc_id
      */
     CMD_ATTACH      = 0x0102,
 
     /**
      * Server -> Client: attached to given process
-     *  [uint16_t]      proc_id
+     *  string          proc_id
      */
     CMD_ATTACHED    = 0x0110,
 
@@ -115,14 +115,14 @@ enum proto_cmd {
     /**
      * Server -> Client: Associated command failed with error
      *  int32_t         err_code
-     *  [uint16_t]      err_msg
+     *  string          err_msg
      */
     CMD_ERROR       = 0xfff0,
 
     /**
      * Server -> Client: Terminal protocol/system error, connection will be closed
      *  int32_t         err_code
-     *  [uint16_t]      err_msg
+     *  string          err_msg
      */
     CMD_ABORT       = 0xffff,
 };
@@ -225,16 +225,11 @@ int proto_read_int32 (struct proto_msg *msg, int32_t *val_ptr);
 int proto_read_buf_ptr (struct proto_msg *msg, const char **buf_ptr, size_t *len_ptr);
 
 /**
- * Read a str of [len] bytes from the msg, storing it and a terminating NUL byte into buf, which mus store at least
- * len+1 bytes.
+ * Read a NUL-terminated string from the msg, returning a pointer to it.
+ *
+ * @param str_ptr returned pointer to beginning of string (ending in NUL)
  */
-int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len);
-
-/**
- * Read a string-length prefix from the msg, alloca a suitable char array, and read the str into it, evaluating to the
- * alloca'd array.
- */
-
+int proto_read_str (struct proto_msg *msg, const char **str_ptr);
 
 /**
  * Write fields
@@ -250,12 +245,12 @@ int proto_write_int32 (struct proto_msg *msg, int32_t val);
 int proto_write_buf (struct proto_msg *msg, const char *buf, size_t len);
 
 /**
- * Write a uint16_t-length-prefixed char array from the given zero-terminated string
+ * Write a zero-terminated string to the msg.
  */
 int proto_write_str (struct proto_msg *msg, const char *str);
 
 /**
- * Write a uint16_t-count-prefixed array of char arrays from the given array of zero-terminated strings
+ * Write a uint16_t-count-prefixed array of strings
  */
 int proto_write_str_array (struct proto_msg *msg, const char *str_array[]);
 

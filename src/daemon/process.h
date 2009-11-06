@@ -14,13 +14,13 @@
  */
 struct process_exec_info {
     /** Path to executable */
-    char *path;
+    const char *path;
     
     /** NULL-termianted list of argument strings, including argv[0] */
-    char **argv;
+    const char **argv;
     
     /** NULL-terminated list of environment strings */
-    char **envp;
+    const char **envp;
 };
 
 /**

@@ -32,16 +32,14 @@ struct nd_client {
 };
 
 /**
- * Allocate and return storage for new error msg of given length (plus one NUL byte).
- *
- * Returns NULL with errno if even that fails.
+ * Allocate and return storage for new error msg
  */
-char *nd_store_error (struct nd_client *client, int err_code, size_t err_msg_len);
+int nd_store_error (struct nd_client *client, int err_code, const char *err_msg);
 
 /**
  * Allocate and return storage for new process ID of given length (plus one NUL byte).
  */
-char *nd_store_process_id (struct nd_client *client, size_t process_id_len);
+int nd_store_process_id (struct nd_client *client, const char *process_id);
 
 /**
  * Update cached process status

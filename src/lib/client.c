@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "client_internal.h"
 #include "shared/proto.h"
 #include "commands.h"
@@ -351,39 +352,32 @@ void nd_destroy (struct nd_client *client)
     free(client);
 }
 
-char *nd_store_error (struct nd_client *client, int err_code, size_t err_msg_len)
+int nd_store_error (struct nd_client *client, int err_code, const char *err_msg)
 {
     if (client->err_msg)
         // dispose of old one
         free(client->err_msg);
 
-    // alloc new one
-    if ((client->err_msg = malloc(err_msg_len + 1)) == NULL)
-        return NULL;
+    // store new one
+    if ((client->err_msg = strdup(err_msg)) == NULL)
+        return -1;
 
-    // init
     client->last_res = err_code;
-    client->err_msg[0] = '\0';
 
-    // ok
-    return client->err_msg;
+    return 0;
 }
 
-char *nd_store_process_id (struct nd_client *client, size_t process_id_len)
+int nd_store_process_id (struct nd_client *client, const char *process_id)
 {
     if (client->process_id)
         // dispose
         free(client->process_id);
 
     // alloc new
-    if ((client->process_id = malloc(process_id_len + 1)) == NULL)
-        return NULL;
-
-    // init
-    client->process_id[0] = '\0';
-
-    // ok
-    return client->process_id;
+    if ((client->process_id = strdup(process_id)) == NULL)
+        return -1;
+    
+    return 0;
 }
 
 int nd_update_status (struct nd_client *client, enum proto_process_status status, int code)

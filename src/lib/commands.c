@@ -11,24 +11,18 @@ static int cmd_error_abort (struct proto_msg *in, struct proto_msg *unused, void
 {
     struct nd_client *client = ctx;
     int32_t err_code;
-    uint16_t len;
-    char *err_msg;
+    const char *err_msg;
     
-    // read info
     if (
             proto_read_int32(in, &err_code)
-        ||  proto_read_uint16(in, &len)
+        ||  proto_read_str(in, &err_msg)
     )
         return -1;
 
-    // alloc storage for error message
-    if ((err_msg = nd_store_error(client, err_code, len)) == NULL)
+    // store error message
+    if (nd_store_error(client, err_code, err_msg))
         return -1;
 
-    // read error message
-    if (_proto_read_str(in, err_msg, len))
-        return -1;
-    
     switch (in->cmd) {
         case CMD_ABORT:
             log_debug("CMD_ABORT: id=%d, err_code=%d, err_msg=%s", in->id, err_code, err_msg);
@@ -64,20 +58,15 @@ static int cmd_attached (struct proto_msg *in, struct proto_msg *unused, void *c
 {
     struct nd_client *client = ctx;
 
-    uint16_t len;
-    char *process_id;
-
-    if (proto_read_uint16(in, &len))
-        return -1;
-
-    // alloc storage for ID
-    if ((process_id = nd_store_process_id(client, len)) == NULL)
-        return -1;
-
-    // read process ID
-    if (_proto_read_str(in, process_id, len))
-        return -1;
+    const char *process_id;
     
+    if (proto_read_str(in, &process_id))
+        return -1;
+
+    // store new ID
+    if (nd_store_process_id(client, process_id))
+        return -1;
+
     log_debug("CMD_ATTACHED: id=%d, process_id=%s", in->id, process_id);
 
     // yay

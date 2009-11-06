@@ -100,7 +100,7 @@ int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, uint32_t id, e
 /**
  * Consume \a len bytes from the msg buf, returning a pointer to the start of the segment, or NULL in case of error
  */
-static void *proto_consume (struct proto_msg *msg, size_t len)
+static void *proto_seek (struct proto_msg *msg, size_t len)
 {
     void *ptr;
 
@@ -120,12 +120,33 @@ static void *proto_consume (struct proto_msg *msg, size_t len)
     return ptr;
 }
 
+/**
+ * Consume bytes from the msg buf, up to and including the first byte matching the given value, or NULL if not found
+ */
+static const char *proto_seek_char (struct proto_msg *msg, char c)
+{
+    // start of str
+    const char *start = msg->buf + msg->offset;
+    const char *end;
+       
+    // seek to end char
+    if ((end = memchr(start, c, msg->len - msg->offset)) == NULL)
+        // not found
+        return NULL;
+
+    // update offset
+    msg->offset += (end - start + 1);
+    
+    // found
+    return start;
+}
+
 int proto_read (struct proto_msg *msg, void *out_buf, size_t len)
 {
     void *msg_buf;
 
     // consume
-    if ((msg_buf = proto_consume(msg, len)) == NULL)
+    if ((msg_buf = proto_seek(msg, len)) == NULL)
         return -1;
    
     // store
@@ -180,7 +201,7 @@ int proto_read_buf_ptr (struct proto_msg *msg, const char **buf_ptr, size_t *len
         return -1;
 
     // get buf
-    *buf_ptr = proto_consume(msg, len);
+    *buf_ptr = proto_seek(msg, len);
 
     // ret
     *len_ptr = len;
@@ -188,16 +209,11 @@ int proto_read_buf_ptr (struct proto_msg *msg, const char **buf_ptr, size_t *len
     return 0;
 }
 
-int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len)
+int proto_read_str (struct proto_msg *msg, const char **str_ptr)
 {
-    // read str value
-    if (proto_read(msg, buf, len))
+    if ((*str_ptr = proto_seek_char(msg, '\0')) == NULL)
         return -1;
 
-    // nul-terminate
-    buf[len] = '\0';
-
-    // ok
     return 0;
 }
 
@@ -253,8 +269,8 @@ int proto_write_str (struct proto_msg *msg, const char *str)
 {
     size_t len = strlen(str);
     
-    // write buf
-    return proto_write_buf(msg, str, len);
+    // write out, with NUL
+    return proto_write(msg, str, len + 1);
 }
 
 int proto_write_str_array (struct proto_msg *msg, const char *str_array[])

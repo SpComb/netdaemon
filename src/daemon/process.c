@@ -170,7 +170,8 @@ static void _process_exec (const struct process_exec_info *exec_info, const stru
     close(io_info->std_err);
     
     // exec
-    if (execve(exec_info->path, exec_info->argv, exec_info->envp) < 0)
+    // XXX: char-constness fails here
+    if (execve(exec_info->path, (char **) exec_info->argv, (char **) exec_info->envp) < 0)
         // fail
         FATAL_ERRNO("execve: %s", exec_info->path);
 
