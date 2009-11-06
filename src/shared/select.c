@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <string.h>
+#include <errno.h>
 
 int select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg)
 {
@@ -47,17 +48,17 @@ void select_loop_del (struct select_loop *loop, struct select_fd *fd)
     }
 }
 
-int select_loop_run (struct select_loop *loop, struct timeval *tv)
+/**
+ * Set up the given fd_set's from the given select_loop, and return the maximum fd found, or -1 on error.
+ */
+static int select_loop_build (struct select_loop *loop, fd_set *rfds, fd_set *wfds)
 {
     int fd_max = -1;
     struct select_fd *fd;
-    int ret, err;
-
-    fd_set rfds, wfds;
 
     // init sets
-    FD_ZERO(&rfds);
-    FD_ZERO(&wfds);
+    FD_ZERO(rfds);
+    FD_ZERO(wfds);
 
     // setup fd_sets
     LIST_FOREACH(fd, &loop->fds, loop_fds) {
@@ -67,41 +68,82 @@ int select_loop_run (struct select_loop *loop, struct timeval *tv)
 
         // read?
         if (fd->want_read)
-            FD_SET(fd->fd, &rfds);
+            FD_SET(fd->fd, rfds);
         
         // write?
         if (fd->want_write)
-            FD_SET(fd->fd, &wfds);
+            FD_SET(fd->fd, wfds);
     }
 
-    // do select
-    if ((ret = select(fd_max + 1, &rfds, &wfds, NULL, tv)) < 0)
-        goto error;
+    // ok
+    return fd_max;
+}
 
-    // dispatch all results
-    for (fd = LIST_FIRST(&loop->fds); ret > 0 && fd; fd = LIST_NEXT(fd, loop_fds) ) {
+/**
+ * Dispatch to active handlers.
+ *
+ * If any handler returns with EAGAIN, simply skip it. Otherwise, if any handler returns nonzero, return that
+ * error code.
+ */
+static int select_loop_dispatch (struct select_loop *loop, fd_set *rfds, fd_set *wfds, int count)
+{
+    int err;
+    struct select_fd *fd;
+
+    for (fd = LIST_FIRST(&loop->fds); count > 0 && fd; fd = LIST_NEXT(fd, loop_fds) ) {
         // read?
-        if (fd->active && FD_ISSET(fd->fd, &rfds)) {
-            ret--;
+        if (fd->active && FD_ISSET(fd->fd, rfds)) {
+            count--;
 
             if ((err = fd->handler_func(fd->fd, FD_READ, fd->handler_arg)))
-                break;
+                goto fd_error;
         }
 
         // write?
-        if (fd->active && FD_ISSET(fd->fd, &wfds)) {
-            ret--;
+        if (fd->active && FD_ISSET(fd->fd, wfds)) {
+            count--;
 
             if ((err = fd->handler_func(fd->fd, FD_WRITE, fd->handler_arg)))
-                break;
+                goto fd_error;
         }
+
+        continue;
+
+fd_error:
+        if (err == -1 && errno == EAGAIN ) 
+            // just skip to next
+            continue;
+                
+        else
+            // break select loop
+            return err;
     }
+
+    // ok
+    return 0;
+}
+
+int select_loop_run (struct select_loop *loop, struct timeval *tv)
+{
+    int fd_max;
+    int ret, err;
+
+    fd_set rfds, wfds;
+
+    // prep
+    if ((fd_max = select_loop_build(loop, &rfds, &wfds)) < 0)
+        return -1;
+
+    // do select
+    if ((ret = select(fd_max + 1, &rfds, &wfds, NULL, tv)) < 0)
+        return -1;
+
+    // dispatch all results
+    if ((err = select_loop_dispatch(loop, &rfds, &wfds, ret)) < 0)
+        return err;
 
     // done
     return 0;
-
-error:
-    return -1;    
 }
 
 int select_loop_main (struct select_loop *loop)

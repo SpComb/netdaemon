@@ -32,7 +32,7 @@ enum select_handler_ret {
 /**
  * Callback handler
  *
- * @return one of SELECT_*, normally SELECT_OK
+ * @return zero on success, -1 on errno, >0 for app-specific return code
  */
 typedef int (*select_handler_t) (int fd, short what, void *arg);
 
@@ -108,6 +108,8 @@ void select_loop_del (struct select_loop *loop, struct select_fd *fd);
 
 /**
  * Run the select loop once with the given timeout
+ *
+ * Returns zero on success, <0 on errno, or whatever any select_fd handler happens to return
  */
 int select_loop_run (struct select_loop *loop, struct timeval *tv);
 

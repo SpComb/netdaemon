@@ -19,6 +19,9 @@ struct daemon {
 
     /** I/O reactor */
     struct select_loop select_loop;
+
+    /** Still running? */
+    bool running;
 };
 
 /**

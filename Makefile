@@ -10,7 +10,7 @@ all: depend bin/daemon lib/libnetdaemon.so bin/client
 bin/daemon : lib/libnetdaemon.so \
 	build/obj/daemon/daemon.o build/obj/daemon/service.o build/obj/daemon/client.o build/obj/daemon/commands.o \
     build/obj/daemon/process.o \
-	build/obj/shared/select.o build/obj/shared/log.o build/obj/shared/util.o
+	build/obj/shared/select.o build/obj/shared/log.o build/obj/shared/util.o build/obj/shared/signal.o
 
 lib/libnetdaemon.so : \
     build/obj/lib/client.o build/obj/lib/commands.o \

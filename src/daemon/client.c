@@ -221,8 +221,9 @@ error:
     // disconnect client
     client_disconnected(client);
     
+    // client is now disconnected, we dealt with the error
     // XXX: how safely return to select_loop?
-    return -1;
+    return 0;
 }
 
 int client_add_seqpacket (struct daemon *daemon, int sock)

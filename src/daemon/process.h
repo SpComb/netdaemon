@@ -69,4 +69,9 @@ int process_attach (struct process *process, struct client *client);
  */
 void process_detach (struct process *process, struct client *client);
 
+/**
+ * Update process state after SIGCHLD
+ */
+int process_update (struct daemon *daemon);
+
 #endif

@@ -104,7 +104,7 @@ int main (int argc, char **argv)
     log_info("Entering main loop");
 
     if (daemon_main(&daemon_state) < 0) {
-        log_errno("daemon_state");
+        log_errno("daemon_main");
 
         goto error;
     }

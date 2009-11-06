@@ -217,3 +217,7 @@ void process_detach (struct process *process, struct client *client)
     log_debug("[%p] Client [%p] detached", process, client);
 }
 
+int process_update (struct daemon *daemon)
+{
+    
+}
