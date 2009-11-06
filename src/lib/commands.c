@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "client_internal.h"
+#include "shared/log.h" // only log_debug
 
 #include <errno.h>
 
@@ -29,13 +30,17 @@ static int cmd_error_abort (struct proto_msg *in, struct proto_msg *unused, void
         return -1;
     
     switch (in->cmd) {
-        case CMD_ABORT:    
+        case CMD_ABORT:
+            log_debug("CMD_ABORT: id=%d, err_code=%d, err_msg=%s", in->id, err_code, err_msg);
+
             // ok - this was a failure
             errno = err_code;
 
             return -1;
 
         case CMD_ERROR:
+            log_debug("CMD_ERROR: id=%d, err_code=%d, err_msg=%s", in->id, err_code, err_msg);
+
             // soft error
             return err_code;
 
@@ -48,6 +53,8 @@ static int cmd_error_abort (struct proto_msg *in, struct proto_msg *unused, void
 // command executed ok
 static int cmd_ok (struct proto_msg *in, struct proto_msg *unused, void *ctx)
 {
+    log_debug("CMD_OK: id=%d", in->id);
+
     // nothing more to it
     return 0;
 }
@@ -58,24 +65,27 @@ static int cmd_attached (struct proto_msg *in, struct proto_msg *unused, void *c
     struct nd_client *client = ctx;
 
     uint16_t len;
-    char *id;
+    char *process_id;
 
     if (proto_read_uint16(in, &len))
         return -1;
 
     // alloc storage for ID
-    if ((id = nd_store_process_id(client, len)) == NULL)
+    if ((process_id = nd_store_process_id(client, len)) == NULL)
         return -1;
 
     // read process ID
-    if (_proto_read_str(in, id, len))
+    if (_proto_read_str(in, process_id, len))
         return -1;
+    
+    log_debug("CMD_ATTACHED: id=%d, process_id=%s", in->id, process_id);
 
     // yay
     return 0;
 }
 
 struct proto_cmd_handler client_command_handlers[] = {
+    { CMD_ATTACHED,     cmd_attached            },
     { CMD_OK,           cmd_ok                  },
     { CMD_ERROR,        cmd_error_abort         },
     { CMD_ABORT,        cmd_error_abort         },

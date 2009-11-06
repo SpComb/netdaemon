@@ -93,7 +93,7 @@ int nd_cmd_hello (struct nd_client *client)
     struct proto_msg msg;
 
     // init with CMD_HELLO
-    if (proto_cmd_init(&msg, buf, sizeof(buf), nd_msg_id(client), CMD_HELLO))
+    if (proto_cmd_init(&msg, buf, sizeof(buf), /* nd_msg_id(client) */ 0, CMD_HELLO))
         return -1;
 
     // add current proto version
@@ -104,7 +104,7 @@ int nd_cmd_hello (struct nd_client *client)
     return nd_send_msg(client, &msg);
 }
 
-int nd_cmd_start (struct nd_client *client, const char *path, const char *argv[], const char *envp[])
+int nd_cmd_start (struct nd_client *client, const char *path, const char **argv, const char **envp)
 {
     char buf[ND_PROTO_MSG_MAX];
     struct proto_msg msg;
@@ -173,7 +173,11 @@ static int nd_poll_internal (struct nd_client *client, struct timeval *tv)
 
             return -1;
         }
+
     } else {
+        // err shouldn't be positive
+        assert(err == 0);
+
         // event
         return 0;
     }
@@ -203,7 +207,7 @@ static int nd_poll_cmd (struct nd_client *client)
         return client->last_res;
 }
 
-int nd_start (struct nd_client *client, const char *path, const char *argv[], const char *envp[])
+int nd_start (struct nd_client *client, const char *path, const char **argv, const char **envp)
 {
     // send the command
     if (nd_cmd_start(client, path, argv, envp))

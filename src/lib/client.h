@@ -56,7 +56,7 @@ int nd_cmd_hello (struct nd_client *client);
  * @param envp          NULL-terminated array of environment strings
  * @return zero on success, <0 on internal error, >0 on command error
  */
-int nd_start (struct nd_client *client, const char *path, const char *argv[], const char *envp[]);
+int nd_start (struct nd_client *client, const char *path, const char **argv, const char **envp);
 
 /**
  * Get the ID of the currently attached process as a NUL-termintated string, or NULL if not attached.

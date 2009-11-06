@@ -34,8 +34,11 @@ int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_ms
             break;
     }
 
-    if (!(cmd_handler->cmd && cmd_handler->handler_func))
-        return ENOTSUP;
+    if (!(cmd_handler->cmd && cmd_handler->handler_func)) {
+        errno = ENOTSUP;
+        
+        return -1;
+    }
 
     // dispatch
     return cmd_handler->handler_func(in, out, ctx);
