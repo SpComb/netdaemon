@@ -31,6 +31,22 @@ static const struct option options[] = {
 void help (const char *argv0)
 {
     fprintf(stderr, "Usage: %s [options]\n", argv0);
+    fprintf(stderr,
+        "Run the netdaemon service, allowing clients to connect.\n"
+        "\n"
+        "\t-h, --help           show this help and exit\n"
+        "\t-q, --quiet          supress informational output\n"
+        "\t-v, --verbose        display more informational output\n"
+        "\t-d, --debug          equivalent to -v\n"
+        "\t-u, --unix=PATH      connect using the given UNIX socket\n"
+        "\n"
+        "Examples:\n"
+    );
+    fprintf(stderr,
+        "\t%s -v -u run/netdaemon\n",
+        argv0
+    );
+
 }
 
 int main (int argc, char **argv)
