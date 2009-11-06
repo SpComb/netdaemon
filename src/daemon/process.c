@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+#include <errno.h>
 
 /**
  * Read-cctivity on process fd
@@ -217,7 +219,56 @@ void process_detach (struct process *process, struct client *client)
     log_debug("[%p] Client [%p] detached", process, client);
 }
 
-int process_update (struct daemon *daemon)
+/**
+ * Update process state
+ */
+static int process_update (struct process *process, int status)
 {
-    
+    if (WIFEXITED(status)) {
+        log_info("[%p] Exited with status=%d", process, WEXITSTATUS(status));
+
+    } else if (WIFSIGNALED(status)) {
+        log_info("[%p] Exited with signal=%d", process, WTERMSIG(status));
+
+    } else {
+        log_warn("[%p] Unknown status=%d", process, status);
+    }
+
+    return 0;
 }
+
+int process_reap (struct daemon *daemon)
+{
+    pid_t pid;
+    int status;
+    struct process *process;
+
+    // figure out which child(ren) want(s) our attention
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        // find process
+        LIST_FOREACH(process, &daemon->processes, daemon_processes) {
+            if (process->pid == pid)
+                break;
+        }
+
+        if (!process) {
+            // eek, unknown child!
+            log_warn("Unknown child process updated!");
+
+        } else {
+            // update
+            if (process_update(process, status))
+                return -1;
+        }
+    }
+
+    // ignore ECHILD: no children to wait on
+    if (pid < 0 && errno != ECHILD)
+        // uh oh
+        return -1;
+
+    else // pid >= 0
+        // ok
+        return 0;
+}
+

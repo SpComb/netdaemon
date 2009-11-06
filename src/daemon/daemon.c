@@ -15,7 +15,7 @@ int on_sigchld (void *arg)
     log_info("trap");
 
     // have the process module deal with it
-    return process_update(daemon);
+    return process_reap(daemon);
 }
 
 int on_sigint (void *arg)

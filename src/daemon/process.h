@@ -70,8 +70,8 @@ int process_attach (struct process *process, struct client *client);
 void process_detach (struct process *process, struct client *client);
 
 /**
- * Update process state after SIGCHLD
+ * Poll for changes in process state after SIGCHLD; this will greedily reap all children
  */
-int process_update (struct daemon *daemon);
+int process_reap (struct daemon *daemon);
 
 #endif

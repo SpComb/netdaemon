@@ -90,6 +90,8 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
 
     // spawn new process
     if (daemon_process_start(client->daemon, &client->process, &exec_info))
+        // soft errror
+        // XXX: EINTR? Hmm...
         return errno;
 
     // XXX: this should be a client_attach(...) function

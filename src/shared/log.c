@@ -91,6 +91,7 @@ void log_output_tag_va (enum log_level level, const char *tag, const char *func,
         buf_ptr += str_append_fmt_va(buf_ptr, &buf_size, log_fmt, log_fmtargs);
 
     // display
+    // XXX: handle SIGINTR?
     fprintf(stderr, "%s\n", buf);
 }
 
