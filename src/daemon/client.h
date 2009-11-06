@@ -58,4 +58,14 @@ void client_on_process_status (struct process *process, enum proto_process_statu
  */
 int client_on_cmd_data (struct client *client, enum proto_channel channel, const char *buf, size_t len);
 
+/**
+ * Start process and attach to it
+ */
+int client_start (struct client *client, const struct process_exec_info *exec_info);
+
+/**
+ * Attach to process
+ */
+int client_attach (struct client *client, const char *process_id);
+
 #endif

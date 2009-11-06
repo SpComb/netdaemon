@@ -341,3 +341,61 @@ int client_on_cmd_data (struct client *client, enum proto_channel channel, const
     }
 }
 
+/**
+ * Attach to given process
+ */
+static int client_attach_process (struct client *client, struct process *process)
+{
+    if (client->process)
+        return EALREADY;
+
+    // attach to it
+    if (process_attach(process, client))
+        return -1;
+
+    // ok
+    client->process = process;
+
+    return 0;
+}
+
+int client_start (struct client *client, const struct process_exec_info *exec_info)
+{
+    struct process *process;
+    int err;
+    
+    if (client->process)
+        return EALREADY;
+
+    // spawn new process
+    if (daemon_process_start(client->daemon, &process, exec_info))
+        // soft errror
+        // XXX: EINTR? Hmm...
+        return errno;
+
+    // attach to it
+    if ((err = client_attach_process(client, process)))
+        goto error;
+    
+    // good
+    return 0;
+
+error:
+    // die
+    process_destroy(process);
+
+    return err;    
+}
+
+int client_attach (struct client *client, const char *process_id)
+{
+    struct process *process;
+
+    // find process
+    if ((process = daemon_find_process(client->daemon, process_id)) == NULL)
+        return ENOENT;
+
+    // attach to it
+    return client_attach_process(client, process);
+}
+

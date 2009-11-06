@@ -87,6 +87,11 @@ int process_stdin_data (struct process *process, const char *buf, size_t len);
 int process_stdin_eof (struct process *process);
 
 /**
+ * Kill the process and bury the body.
+ */
+void process_destroy (struct process *process);
+
+/**
  * Poll for changes in process state after SIGCHLD; this will greedily reap all children
  */
 int process_reap (struct daemon *daemon);

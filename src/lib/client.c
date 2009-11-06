@@ -161,8 +161,26 @@ int nd_cmd_data (struct nd_client *client, enum proto_channel channel, const cha
 
 error:
     return -1;
-
 }
+
+int nd_cmd_attach (struct nd_client *client, const char *process_id)
+{
+    char msg_buf[4096];
+    struct proto_msg msg;
+
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), nd_msg_id(client), CMD_ATTACH))
+        return -1;
+    
+    if (proto_write_str(&msg, process_id))
+        return -1;
+
+    if (nd_send_msg(client, &msg))
+        return -1;
+
+    // ok
+    return 0;
+}
+
 
 /**
  * Poll for activity using select().
@@ -276,6 +294,16 @@ int nd_start (struct nd_client *client, const char *path, const char **argv, con
 {
     // send the command
     if (nd_cmd_start(client, path, argv, envp))
+        return -1;
+
+    // wait for and return reply
+    return nd_poll_cmd(client);
+}
+
+int nd_attach (struct nd_client *client, const char *process_id)
+{
+    // send the command
+    if (nd_cmd_attach(client, process_id))
         return -1;
 
     // wait for and return reply

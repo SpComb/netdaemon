@@ -40,6 +40,11 @@ int daemon_service_unix (struct daemon *daemon, const char *path);
 int daemon_process_start (struct daemon *daemon, struct process **proc_ptr, const struct process_exec_info *exec_info);
 
 /**
+ * Find and return a process with the given ID, or NULL
+ */
+struct process *daemon_find_process (struct daemon *daemon, const char *process_id);
+
+/**
  * Run daemon mainloop
  */
 int daemon_main (struct daemon *daemon);

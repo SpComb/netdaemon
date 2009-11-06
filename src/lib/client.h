@@ -61,10 +61,8 @@ int nd_open_unix (struct nd_client *client, const char *path);
 int nd_cmd_hello (struct nd_client *client);
 
 /**
- * Send a CMD_START message to the service.
- *
- * This will launch a new process on the daemon, and automatically attach to it. Use nd_process_id() to retrieve the
- * new process's ID.
+ * Start a new process and automatically attach to it.
+ * Use nd_process_id to retreieve the new process's ID.
  *
  * @param path          path to executable
  * @param argv          NULL-terminated array of arguments, not including argv[0]
@@ -72,6 +70,13 @@ int nd_cmd_hello (struct nd_client *client);
  * @return zero on success, <0 on internal error, >0 on command error
  */
 int nd_start (struct nd_client *client, const char *path, const char **argv, const char **envp);
+
+/**
+ * Attach to a pre-existing process using the given name.
+ *
+ * Fails with ENOENT if the named process does not exist.
+ */
+int nd_attach (struct nd_client *client, const char *process_id);
 
 /**
  * Send data to stdin on the attached process.

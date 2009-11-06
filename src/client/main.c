@@ -130,6 +130,34 @@ error:
 }
 
 /**
+ * Attach to an existing process
+ */
+static int cmd_attach (struct nd_client *client, char **argv)
+{
+    int err;
+
+    if (!argv[0]) {
+        log_error("No process ID given");
+        
+        return -1;
+    }
+
+    // attach to it
+    if ((err = nd_attach(client, argv[0])))
+        return err;
+
+    // yay
+    log_info("Attached to process: %s", nd_process_id(client));
+
+    // stream
+    if (run_process(client))
+        return -1;
+
+    // ok
+    return 0;
+}
+
+/**
  * CLI Commands
  */
 static const struct command {
@@ -138,8 +166,8 @@ static const struct command {
     int (*func) (struct nd_client *client, char **argv);
 
 } commands[] = {
-
     { "start",      cmd_start           },
+    { "attach",     cmd_attach          },
     { NULL,         NULL                }
 };
 
@@ -370,7 +398,7 @@ int main (int argc, char **argv)
 
     // run as commanded
     if (run_cmd(client, argv[optind], argv + optind + 1))
-        EXIT_ERROR(EXIT_FAILURE, "run_cmd");
+        EXIT_ERROR(EXIT_FAILURE, "run_cmd: %s", nd_error_msg(client));
 
     // ok
     return EXIT_SUCCESS;

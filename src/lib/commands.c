@@ -59,15 +59,20 @@ static int cmd_attached (struct proto_msg *in, struct proto_msg *unused, void *c
     struct nd_client *client = ctx;
 
     const char *process_id;
+    uint16_t status, status_code;
     
-    if (proto_read_str(in, &process_id))
+    if (
+            proto_read_str(in, &process_id)
+        ||  proto_read_uint16(in, &status)
+        ||  proto_read_uint16(in, &status_code)
+    )
         return -1;
+
+    log_debug("CMD_ATTACHED: id=%d, process_id=%s, status=%d:%d", in->id, process_id, status, status_code);
 
     // store new ID
     if (nd_store_process_id(client, process_id))
         return -1;
-
-    log_debug("CMD_ATTACHED: id=%d, process_id=%s", in->id, process_id);
 
     // yay
     return 0;

@@ -3,6 +3,7 @@
 #include "shared/log.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 /**
@@ -93,6 +94,19 @@ int daemon_process_start (struct daemon *daemon, struct process **proc_ptr, cons
     return 0;
 }
 
+struct process *daemon_find_process (struct daemon *daemon, const char *proc_id)
+{
+    struct process *process;
+    
+    LIST_FOREACH(process, &daemon->processes, daemon_processes) {
+        // match
+        if (strcmp(process_id(process), proc_id) == 0)
+            break;
+    }
+
+    return process;
+}
+
 int daemon_main (struct daemon *daemon)
 {
     int err;
@@ -102,6 +116,7 @@ int daemon_main (struct daemon *daemon)
 
     // run select loop with signal handling
     while (daemon->running) {
+        // wait for activity on FDs or signal
         if ((err = select_loop_run(&daemon->select_loop, NULL)) < 0) {
             if (errno == EINTR) {
                 // run signal handlers
@@ -116,25 +131,25 @@ int daemon_main (struct daemon *daemon)
                     log_debug("Spurious EINTR, no signals handled...");
 
             } else {
-                // fail
+                // select/handling raised system error
                 return err;
             }
 
         } else {
-            // XXX: check for signals anyways...
+            // check for signals
             if ((err = signal_run()) < 0)
                 // quick exit
                 return -1;
 
             else if (err)
-                // no EINTR reported!
+                // XXX: is this a bug? Not really...
                 log_debug("Signal without EINTR!");
         }
     }
 
     log_info("Exited main loop, cleaning up...");
 
-    // XXX: clean up
+    // XXX: well, clean up
 
     return 0;
 }

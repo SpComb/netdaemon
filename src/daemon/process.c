@@ -164,7 +164,7 @@ static void _process_exec (const struct process_exec_info *exec_info, const stru
         FATAL_ERRNO("dup2");
 
     // close old fds
-    // XXX: fine as long as io_info->std_in != STDIN_FILENO
+    // fine as long as io_info->std_in != STDIN_FILENO
     close(io_info->std_in);
     close(io_info->std_out);
     close(io_info->std_err);
@@ -346,6 +346,21 @@ int process_stdin_eof (struct process *process)
     return 0;
 }
 
+void process_destroy (struct process *process)
+{
+    struct client *client;
+
+    if (process->pid)
+        // XXX: kill kill kill
+        ;
+
+    // detach all clients
+    LIST_FOREACH(client, &process->clients, process_clients) {
+        process_detach(process, client);
+    }
+    
+    // and poof, we should be dead    
+}
 
 /**
  * Update process state after wait()
