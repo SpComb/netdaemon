@@ -17,4 +17,9 @@ int make_pipe (int *fd_read, int *fd_write);
  */
 int fd_flags (int fd, int set_flags);
 
+/**
+ * Allocate and return a new string with the given contents
+ */
+char *strfmt (const char *fmt, ...);
+
 #endif

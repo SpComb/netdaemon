@@ -82,6 +82,19 @@ enum proto_cmd {
     CMD_ATTACH      = 0x0102,
 
     /**
+     * Client -> Server: request list of processes
+     *  -
+     *
+     * Server -> Client: list of processes
+     *  [uint16_t]      procs {
+     *      string          proc_id
+     *      uint16_t        status
+     *      uint16_t        status_code
+     *  }
+     */
+    CMD_LIST        = 0x0103,
+
+    /**
      * Server -> Client: attached to given process
      *  string          proc_id
      */

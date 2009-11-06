@@ -146,14 +146,38 @@ static int cmd_attach (struct nd_client *client, char **argv)
     if ((err = nd_attach(client, argv[0])))
         return err;
 
-    // yay
-    log_info("Attached to process: %s", nd_process_id(client));
+    if (nd_process_running(client)) {
+        log_info("Attached to process: %s", nd_process_id(client));
 
-    // stream
-    if (run_process(client))
-        return -1;
+        // stream
+        if (run_process(client))
+            return -1;
+
+    } else {
+        // XXX: show more status info
+        log_info("Process is not running anymore: XXX");
+
+        return 0;
+    }
 
     // ok
+    return 0;
+}
+
+/**
+ * Display a listing of all available processes
+ */
+static int cmd_list (struct nd_client *client, char **argv)
+{
+    int err;
+
+    // list
+    if ((err = nd_list(client)))
+        return err;
+
+    log_info("List done");
+
+    // done
     return 0;
 }
 
@@ -210,6 +234,7 @@ static const struct command {
 } commands[] = {
     { "start",      cmd_start           },
     { "attach",     cmd_attach          },
+    { "list",       cmd_list            },
     { "kill",       cmd_kill            },
     { NULL,         NULL                }
 };
@@ -288,6 +313,16 @@ static int on_kill (struct nd_client *client, int sig, void *arg)
 }
 
 /**
+ * Process list entry from cmd_list
+ */
+static int on_list (struct nd_client *client, const char *process_id, int status, int status_code, void *arg)
+{
+    log_info("process_id=%s, status=%d:%d", process_id, status, status_code);
+
+    return 0;
+}
+
+/**
  * Remote process event handlers
  */
 static const struct nd_callbacks callbacks = {
@@ -295,6 +330,7 @@ static const struct nd_callbacks callbacks = {
     .on_stderr      = on_stderr,
     .on_exit        = on_exit_,
     .on_kill        = on_kill,
+    .on_list        = on_list,
 };
 
 /**

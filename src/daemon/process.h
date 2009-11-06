@@ -30,6 +30,9 @@ struct process {
     /** Daemon state we are running under */
     struct daemon *daemon;
 
+    /** The process name */
+    char *name;
+
     /** Currently running process ID */
     pid_t pid;
 
@@ -62,7 +65,12 @@ int process_start (struct daemon *daemon, struct process **proc_ptr, const struc
 /**
  * Return the opaque process ID as a NUL-terminated string
  */
-const char *process_id (struct process *proccess);
+static inline const char *process_id (struct process *process)
+{
+    return process->name;
+}
+
+
 
 /**
  * Attach this client to this process, streaming out stdout/err data

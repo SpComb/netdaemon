@@ -1,6 +1,9 @@
 #include "util.h"
 
 #include <unistd.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /**
  * Identify pipe ends
@@ -51,3 +54,30 @@ int fd_flags (int fd, int set_flags)
     return 0;
 }
 
+char *strfmt (const char *fmt, ...)
+{
+    va_list vargs;
+    size_t len;
+    char *buf;
+
+    va_start(vargs, fmt);
+
+    // figure out the length of the resulting string
+    len = vsnprintf(NULL, 0, fmt, vargs) + 1;
+
+    va_end(vargs);
+
+    // malloc
+    if ((buf = malloc(len)) == NULL)
+        return NULL;
+
+    va_start(vargs, fmt);
+
+    // format
+    vsnprintf(buf, len, fmt, vargs);
+
+    va_end(vargs);
+
+    // ok
+    return buf;
+}

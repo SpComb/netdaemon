@@ -164,10 +164,44 @@ static int cmd_kill (struct proto_msg *req, struct proto_msg *out, void *ctx)
     return client_kill(client, sig);
 }
 
+// get list of processes
+static int cmd_list (struct proto_msg *req, struct proto_msg *out, void *ctx)
+{
+    struct client *client = ctx;
+    struct process *process;
+    uint16_t count = 0;
+
+    // number of processes running
+    LIST_FOREACH(process, &client->daemon->processes, daemon_processes)
+        count++;
+    
+    log_info("-> count=%u", count);
+
+    // reply
+    if (
+            proto_cmd_reply(out, req, CMD_LIST)
+        ||  proto_write_uint16(out, count)
+    )
+        return -1;
+
+    LIST_FOREACH(process, &client->daemon->processes, daemon_processes) {
+        if (
+                proto_write_str(out, process_id(process))
+            ||  proto_write_uint16(out, process->status)
+            ||  proto_write_uint16(out, process->status_code)
+        )
+            return -1;
+    }
+
+    // ok
+    return 0;
+}
+
 /**
  * Server-side command handlers
  */
 struct proto_cmd_handler daemon_command_handlers[] = {
+    {   CMD_LIST,       cmd_list        },
     {   CMD_KILL,       cmd_kill        },
     {   CMD_ATTACH,     cmd_attach      },
     {   CMD_DATA,       cmd_data        },

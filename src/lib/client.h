@@ -33,6 +33,9 @@ struct nd_callbacks {
 
     /** Process was killed by signal */
     int (*on_kill) (struct nd_client *client, int sig, void *arg);
+
+    /** Process list entry */
+    int (*on_list) (struct nd_client *client, const char *proccess_id, int status, int status_code, void *arg);
 };
 
 /**
@@ -79,6 +82,13 @@ int nd_start (struct nd_client *client, const char *path, const char **argv, con
 int nd_attach (struct nd_client *client, const char *process_id);
 
 /**
+ * Retrieve a listing of processes from the server.
+ *
+ * This will call nd_callbacks.on_list once for each listed process, and then return.
+ */
+int nd_list (struct nd_client *client);
+
+/**
  * Send data to stdin on the attached process.
  *
  * The data will be written atomically
@@ -105,6 +115,13 @@ int nd_kill (struct nd_client *client, int sig);
  * String is valid until the process ID next changes.
  */
 const char *nd_process_id (struct nd_client *client);
+
+/**
+ * Is the attached process running?
+ *
+ * @return <0 if not attached, 0 if not running, >0 if running
+ */
+int nd_process_running (struct nd_client *client);
 
 /**
  * Return the FD used by nd_client which can be monitored for activity as per want_* before calling nd_poll.

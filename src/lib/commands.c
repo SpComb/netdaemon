@@ -165,7 +165,40 @@ static int cmd_status (struct proto_msg *in, struct proto_msg *unused, void *ctx
     }
 }
 
+// process listing
+static int cmd_list (struct proto_msg *in, struct proto_msg *unused, void *ctx)
+{
+    struct nd_client *client = ctx;
+    uint16_t count;
+    int err;
+
+    if (proto_read_uint16(in, &count))
+        return -1;
+
+    log_debug("CMD_LIST: count=%u", count);
+
+    while (count--) {
+        const char *proc_id;
+        uint16_t status, status_code;
+
+        if (
+                proto_read_str(in, &proc_id)
+            ||  proto_read_uint16(in, &status)
+            ||  proto_read_uint16(in, &status_code)
+        )
+            return -1;
+
+        // notify
+        if ((err = client->cb_funcs.on_list(client, proc_id, status, status_code, client->cb_arg)))
+            return err;
+    }
+
+    // ok
+    return 0;
+}
+
 struct proto_cmd_handler client_command_handlers[] = {
+    { CMD_LIST,         cmd_list                },
     { CMD_STATUS,       cmd_status              },
     { CMD_DATA,         cmd_data                },
     { CMD_ATTACHED,     cmd_attached            },

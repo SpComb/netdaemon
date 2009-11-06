@@ -40,6 +40,7 @@ static void process_cleanup (struct process *process)
     }
 
     // done
+    free(process->name);
     free(process);
 }
 
@@ -274,22 +275,22 @@ int process_start (struct daemon *daemon, struct process **proc_ptr, const struc
     if (process_spawn(process, exec_info) < 0)
         goto error;
 
+    // generate ID
+    if ((process->name = strfmt("%s:%d", exec_info->path, process->pid)) == NULL)
+        goto error;
+
+    log_info("[%p] Spawned process as %s", process, process->name);
+
     // ok
     *proc_ptr = process;
 
     return 0;
 
 error:
-    // XXX: proper cleanup
-    free(process);
+    // cleanup
+    process_destroy(process);
 
     return -1;
-}
-
-const char *process_id (struct process *proccess)
-{
-    // XXX: not yet known
-    return "XXX";
 }
 
 int process_attach (struct process *process, struct client *client)

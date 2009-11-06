@@ -29,6 +29,10 @@ struct nd_client {
 
     /** Attached process ID */
     char *process_id;
+
+    /** Last status */
+    enum proto_process_status status;
+    int status_code;
 };
 
 /**

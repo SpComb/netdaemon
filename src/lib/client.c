@@ -181,6 +181,21 @@ int nd_cmd_attach (struct nd_client *client, const char *process_id)
     return 0;
 }
 
+int nd_cmd_list (struct nd_client *client)
+{
+    char msg_buf[4096];
+    struct proto_msg msg;
+
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), nd_msg_id(client), CMD_LIST))
+        return -1;
+    
+    if (nd_send_msg(client, &msg))
+        return -1;
+
+    // ok
+    return 0;
+}
+
 int nd_cmd_kill (struct nd_client *client, int sig)
 {
     char msg_buf[512];
@@ -327,6 +342,16 @@ int nd_attach (struct nd_client *client, const char *process_id)
     return nd_poll_cmd(client);
 }
 
+int nd_list (struct nd_client *client)
+{
+    // send the command
+    if (nd_cmd_list(client))
+        return -1;
+
+    // wait for and return reply
+    return nd_poll_cmd(client);
+}
+
 int nd_stdin_data (struct nd_client *client, const char *buf, size_t len)
 {
     // send
@@ -360,6 +385,14 @@ int nd_kill (struct nd_client *client, int sig)
 const char *nd_process_id (struct nd_client *client)
 {
     return client->process_id;
+}
+
+int nd_process_running (struct nd_client *client)
+{
+    if (!client->process_id)
+        return -1;
+
+    return client->status == PROCESS_RUN;
 }
 
 int nd_poll_fd (struct nd_client *client, bool *want_read, bool *want_write)
@@ -437,7 +470,9 @@ int nd_store_process_id (struct nd_client *client, const char *process_id)
 
 int nd_update_status (struct nd_client *client, enum proto_process_status status, int code)
 {
-    // XXX: implement
+    // store
+    client->status = status;
+    client->status_code = code;
 
     return 0;
 }
