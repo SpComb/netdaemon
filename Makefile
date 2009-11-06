@@ -1,3 +1,5 @@
+# :set noexpandtab
+
 # warnings, and use C99 with GNU extensions
 CFLAGS = -Wall -std=gnu99 -g
 
@@ -26,6 +28,10 @@ dirs:
 	mkdir -p bin lib run
 	mkdir -p $(SRC_DIRS:%=build/deps/%)
 	mkdir -p $(SRC_DIRS:%=build/obj/%)
+
+clean:
+	rm -f build/obj/*/*.o build/deps/*/*.d
+	rm -f bin/* lib/*.so run/*
 
 # .h dependencies
 depend: $(SRC_NAMES:%.c=build/deps/%.d)

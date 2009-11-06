@@ -24,7 +24,7 @@ In operational mode, the client can:
         * recieve data from stdout/stderr
         * send signals
         * recieve process status updates (killed, termination, etc.)
-    * detach from the process and attach to a new one
+    * detach from the process and attach to a new one (optional: can just reconnect)
     * start a new process (and attach to it)
 
 Each client connection can, at most, be attached to one process at a time.
@@ -36,6 +36,7 @@ To start a process or attach to one, the daemon performs authorization of the pr
 authenticated user.
 
 TODO:
+    * proto: also transmit stdin/out/err EOF in CMD_ATTACHED/CMD_STATUS
     * daemon: resolve behaviour of select_loop_del as regards calling from within select_loop_run
     * client: ordering of on_exit/on_stdout_eof to only exit once process has exited AND we have EOF on both
 
