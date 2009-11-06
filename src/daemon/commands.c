@@ -82,7 +82,7 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
     }
 
     // terminate
-    exec_info.argv[i] = NULL;
+    exec_info.argv[i + 1] = NULL;
     
     // XXX: envp
     exec_info.envp = alloca(1 * sizeof(char *));
