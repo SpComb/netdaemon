@@ -1,42 +1,98 @@
-netdaemon
+*** netdaemon ***
 
-Asynchronous control of persistent daemon processes.
+Remote control of persistent processes.
+
+
+** About *
 
 netdaemon is a daemon program that offers an remote/asynchronous API for running and controlling a set of other
-processes. Included is also a client library and command-line utility.
+processes. Also included is a client library and command-line utility.
 
-The daemon runs a set of background processes which are attached to the daemon, and then clients may connect to the
-daemon and issue commands to control these processes. The daemon offers the following aspects of control:
-    * exec path (direct filesystem path)
+The daemon runs a set of background processes, and clients may connect to the daemon (over an UNIX socket) and attach
+to a process to control it. Clients can also query the list of available processes and start new ones. The daemon
+offers control over:
+    * exec path
     * exec arguments
     * exec environment
     * sending signals
-    * watching status
+    * watching status (exit, kill)
+    * sending data/EOF to stdin
+    * recieving data/EOF from stdout/stderr
 
-Each connection to the daemon undergoes protocol handshake and authentication stages before proceeding to actual
-operation.
+
+** Operation **
+
+Each connection to the daemon undergoes protocol handshake before proceeding to actual operation.
 
 In operational mode, the client can:
-    * query the listing of active processes
-    * attach to a running process
+    * query the listing of active processes (CMD_LIST)
+
+    * attach to a running process (CMD_ATTACH)
+
     * perform operations on the attached process and recieve operational status
-        * send data to stdin
-        * recieve data from stdout/stderr
-        * send signals
-        * recieve process status updates (killed, termination, etc.)
-    * detach from the process and attach to a new one (optional: can just reconnect)
-    * start a new process (and attach to it)
+
+        * recieve notification of exit/signal-terminate (CMD_STATUS)
+
+        * send data/eof to stdin (CMD_DATA)
+
+        * recieve data/eof from stdout/stderr (CMD_DATA)
+
+        * send signals (CMD_KILL)
+
+    * start a new process and attach to it (CMD_START)
 
 Each client connection can, at most, be attached to one process at a time.
 
 Each process initiated has an unique ID handle associated with it, which can be used by the clients to identify and
 attach to a process after starting one and reconnecting.
 
-To start a process or attach to one, the daemon performs authorization of the process's permissions against the client's
-authenticated user.
 
-TODO:
-    * proto: also transmit stdin/out/err EOF in CMD_ATTACHED/CMD_STATUS
-    * daemon: resolve behaviour of select_loop_del as regards calling from within select_loop_run
-    * client: ordering of on_exit/on_stdout_eof to only exit once process has exited AND we have EOF on both
+** Compiling **
+
+The code has been developed on Ubuntu Linux 2.6.24/28 using GCC 4.2.4/4.3.3.
+
+It uses GNU-specific extensions to the C language, and hence compiles with -std=gnu99 and uses _GNU_SOURCE in places.
+
+The code compiles without warnings apart from passing non-void* to printf-%p.
+    
+    make
+
+** Examples **
+    0$ ./bin/daemon -v -u run/netdaemon
+
+    1$ ./bin/client -q -u run/netdaemon start -- /usr/bin/wc -l
+        foo
+        bar
+        ^C 
+        
+    1$ ./bin/client -u run/netdaemon list
+      > ... process_id=/usr/bin/wc:31299, status=1:31299
+
+    1$ ./bin/client -u run/netdaemon attach /usr/bin/wc:31299
+        ^D
+      > 2
+
+    1$ ./bin/client -u run/netdaemon start -- /bin/cat
+      > ... Attached to process: /bin/cat:31464
+        foo
+      > foo
+
+    2$ ./bin/client -u run/netdaemon kill /bin/cat:31464 15
+    
+    1$
+      > Terminated
+
+** Bugs **
+
+Sometimes, the client will disconnect as soon as the process exits, but before it recieves all stdout/err output.
+
+** TODO **
+    * proto:    also transmit stdin/out/err EOF-state in CMD_ATTACHED/CMD_STATUS, so the client doesn't try and feed
+                input to a closed stdin
+           
+    * daemon:   resolve behaviour of select_loop_del as regards calling from within select_loop_run
+
+    * client:   ordering of on_exit/on_stdout/stderr-eof to only exit once process has exited AND we have EOF on both
+    
+    * client:   better display of process status
 

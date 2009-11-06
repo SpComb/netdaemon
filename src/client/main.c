@@ -154,7 +154,7 @@ static int cmd_attach (struct nd_client *client, char **argv)
 
     } else {
         // XXX: show more status info
-        log_info("Process is not running anymore: XXX");
+        log_info("Process is not running anymore");
 
         return 0;
     }
@@ -379,10 +379,10 @@ void help (const char *argv0)
         "Examples:\n"
     );
     fprintf(stderr,
-        "\t%s -q -u run/netdaemon start -- /bin/wc -l\n"
+        "\t%s -q -u run/netdaemon start -- /usr/bin/wc -l\n"
         "\t%s -u run/netdaemon list\n"
-        "\t%s -u run/netdaemon attach /bin/wc:1234\n"
-        "\t%s -u run/netdaemon kill /bin/wc:1234 15\n",
+        "\t%s -u run/netdaemon attach /usr/bin/wc:...\n"
+        "\t%s -u run/netdaemon kill /usr/bin/wc:... 15\n",
         argv0, argv0, argv0, argv0
     );
 }
