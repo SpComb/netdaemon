@@ -82,6 +82,19 @@ static inline void select_want_write (struct select_fd *fd, bool want_write)
 }
 
 /**
+ * Is the given select_fd still active?
+ */
+static inline bool select_fd_active (struct select_fd *fd)
+{
+    return fd->active;
+}
+
+/**
+ * De-init the given un-active fd
+ */
+void select_fd_deinit (struct select_fd *fd);
+
+/**
  * Select-loop state
  */
 struct select_loop {

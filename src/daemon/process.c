@@ -8,6 +8,75 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <assert.h>
+
+/**
+ * Clean up the given process, which shouldn't be running or have any attached clients.
+ *
+ * This will remove it from the list of processes, and close any remaining stdin/out/err pipes.
+ */
+static void process_cleanup (struct process *process)
+{
+    assert(process->pid < 0);
+    assert(LIST_EMPTY(&process->clients));
+
+    // remove from daemon list
+    LIST_REMOVE(process, daemon_processes);
+
+    // cleanup stdin/out/err
+    if (process->std_in >= 0)
+        close(process->std_in);
+
+    if (select_fd_active(&process->std_out)) {
+        // XXX: select_fd_close
+        select_loop_del(&process->daemon->select_loop, &process->std_out);
+        close(process->std_out.fd);
+    }
+
+    if (select_fd_active(&process->std_err)) {
+        // XXX: select_fd_close
+        select_loop_del(&process->daemon->select_loop, &process->std_err);
+        close(process->std_err.fd);
+    }
+
+    // done
+    free(process);
+}
+
+/**
+ * Update process status
+ */
+static int process_update (struct process *process, enum proto_process_status status, int code)
+{
+    struct client *client;
+
+    switch (status) {
+        case PROCESS_RUN:
+            log_info("[%p] Running with pid=%d", process, code);
+            break;
+
+        case PROCESS_EXIT:
+            log_info("[%p] Exited with status=%d", process, code);
+            break;
+
+        case PROCESS_KILL:
+            log_info("[%p] Terminated with signal=%d", process, code);
+            break;
+    }
+
+    // store
+    process->status = status;
+    process->status_code = code;
+        
+    // notify attached clients
+    LIST_FOREACH(client, &process->clients, process_clients) {
+        // callback
+        client_on_process_status(process, status, code, client);
+    }
+
+    // ok
+    return 0;
+}
 
 /**
  * Read-cctivity on process fd
@@ -22,9 +91,16 @@ static int process_on_read (struct process *process, enum proto_channel channel,
     if ((ret = read(fd, buf, sizeof(buf))) < 0)
         goto error;
 
-    else if (ret == 0)
+    else if (ret == 0) {
         // eof
         select_loop_del(&process->daemon->select_loop, select_fd);
+
+        // close fd
+        close(fd);
+
+        // deinit
+        select_fd_deinit(select_fd);
+    }
 
     // pass off to each attached client
     LIST_FOREACH(client, &process->clients, process_clients) {
@@ -152,7 +228,7 @@ static int process_spawn (struct process *process, const struct process_exec_inf
         goto error;
 
     } else if (process->pid == 0) {
-        // XXX: for some reason, it seems like O_CLOEXEC doesn't work for pipes...
+        // clean up parent's pipes
         close(proc_io.std_in);
         close(proc_io.std_out);
         close(proc_io.std_err);
@@ -166,12 +242,16 @@ static int process_spawn (struct process *process, const struct process_exec_inf
         close(exec_io.std_out);
         close(exec_io.std_err);
 
+        // update initial status
+        if (process_update(process, PROCESS_RUN, process->pid))
+            goto error;
+
         // child started, parent continues
         return 0;
     }
 
 error:
-    // XXX: close pipes?
+    // XXX: cleanup pipes
     return -1;
 }
 
@@ -187,11 +267,11 @@ int process_start (struct daemon *daemon, struct process **proc_ptr, const struc
     process->daemon = daemon;
     LIST_INIT(&process->clients);
 
+    log_info("[%p] Spawning process: %s ...", process, exec_info->argv[0]);
+
     // start
     if (process_spawn(process, exec_info) < 0)
         goto error;
-
-    log_info("[%p] Spawned process '%s' -> pid=%d as '%s'", process, exec_info->path, process->pid, process_id(process));
 
     // ok
     *proc_ptr = process;
@@ -228,81 +308,19 @@ void process_detach (struct process *process, struct client *client)
     LIST_REMOVE(client, process_clients);
     
     log_debug("[%p] Client [%p] detached", process, client);
-}
 
-/**
- * Update process state
- */
-static int process_update (struct process *process, int status)
-{
-    enum proto_process_status pstatus;
-    int code;
-    struct client *client;
+    // cleanup?
+    if (process->pid < 0 && LIST_EMPTY(&process->clients)) {
+        log_info("[%p] Cleaning up...", process);
 
-    if (WIFEXITED(status)) {
-        pstatus = PROCESS_EXIT;
-        code = WEXITSTATUS(status);
-
-        log_info("[%p] Exited with status=%d", process, code);
-
-    } else if (WIFSIGNALED(status)) {
-        pstatus = PROCESS_KILL;
-        code = WTERMSIG(status);
-
-        log_info("[%p] Exited with signal=%d", process, code);
-
-    } else {
-        log_warn("[%p] Unknown status=%d", process, status);
+        process_cleanup(process);
     }
-
-    // notify attached clients
-    LIST_FOREACH(client, &process->clients, process_clients) {
-        // callback
-        client_on_process_status(process, pstatus, code, client);
-    }
-
-    return 0;
-}
-
-int process_reap (struct daemon *daemon)
-{
-    pid_t pid;
-    int status;
-    struct process *process;
-
-    // figure out which child(ren) want(s) our attention
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        // find process
-        LIST_FOREACH(process, &daemon->processes, daemon_processes) {
-            if (process->pid == pid)
-                break;
-        }
-
-        if (!process) {
-            // eek, unknown child!
-            log_warn("Unknown child process updated!");
-
-        } else {
-            // update
-            if (process_update(process, status))
-                return -1;
-        }
-    }
-
-    // ignore ECHILD: no children to wait on
-    if (pid < 0 && errno != ECHILD)
-        // uh oh
-        return -1;
-
-    else // pid >= 0
-        // ok
-        return 0;
 }
 
 int process_stdin_data (struct process *process, const char *buf, size_t len)
 {
     ssize_t ret;
-
+ 
     // XXX: blocking, should buffer
     while (len) {
         if ((ret = write(process->std_in, buf, len)) < 0)
@@ -326,3 +344,60 @@ int process_stdin_eof (struct process *process)
 
     return 0;
 }
+
+
+/**
+ * Update process state after wait()
+ */
+static int process_reap_update (struct process *process, int status)
+{
+    // forget pid
+    process->pid = -1;
+
+    // decode status
+    if (WIFEXITED(status))
+        return process_update(process, PROCESS_EXIT, WEXITSTATUS(status));
+
+    else if (WIFSIGNALED(status))
+        return process_update(process, PROCESS_KILL, WTERMSIG(status));
+
+    else
+        // unkown status?!
+        return 0;
+}
+
+int process_reap (struct daemon *daemon)
+{
+    pid_t pid;
+    int status;
+    struct process *process;
+
+    // figure out which child(ren) want(s) our attention
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        // find process
+        LIST_FOREACH(process, &daemon->processes, daemon_processes) {
+            if (process->pid == pid)
+                break;
+        }
+
+        if (!process) {
+            // eek, unknown child!
+            log_warn("Unknown child process updated!");
+
+        } else {
+            // update state
+            if (process_reap_update(process, status))
+                return -1;
+        }
+    }
+
+    // ignore ECHILD: no children to wait on
+    if (pid < 0 && errno != ECHILD)
+        // uh oh
+        return -1;
+
+    else // pid >= 0
+        // ok
+        return 0;
+}
+

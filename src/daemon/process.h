@@ -4,9 +4,10 @@
 /**
  * @file
  */
+#include "shared/select.h"
+#include "shared/proto.h"
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <shared/select.h>
 
 /**
  * Info required for process exec
@@ -37,6 +38,10 @@ struct process {
 
     /** stdout/err fds in select loop */
     struct select_fd std_out, std_err;
+
+    /** Current status */
+    enum proto_process_status status;
+    int status_code;
 
     /** List of attached clients */
     LIST_HEAD(process_clients, client) clients;

@@ -4,6 +4,7 @@
 #include <sys/select.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 int select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t handler_func, void *handler_arg)
 {
@@ -18,6 +19,13 @@ int select_fd_init (struct select_fd *fd, int _fd, short mask, select_handler_t 
 
     // ok
     return 0;
+}
+
+void select_fd_deinit (struct select_fd *fd)
+{
+    assert(!fd->active);
+
+    fd->fd = -1;
 }
 
 void select_loop_init (struct select_loop *loop)
