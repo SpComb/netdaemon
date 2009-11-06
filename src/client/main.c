@@ -25,6 +25,7 @@ static int run_stdin (struct nd_client *client)
     
     else if (!len)
         // close stream
+        // XXX: stop accepting input
         return nd_stdin_eof(client);
 
     else
@@ -93,7 +94,6 @@ static int run_process (struct nd_client *client)
  */
 static int cmd_start (struct nd_client *client, char **argv)
 {
-    char *envp[] = { NULL };
     int err;
 
     if (!argv[0]) {
@@ -102,9 +102,8 @@ static int cmd_start (struct nd_client *client, char **argv)
         goto error;
     }
 
-    // start a new process with argv given on the command-line
-    // XXX: use environ for envp?
-    if ((err = nd_start(client, argv[0], (const char **) argv + 1, (const char **) envp)) < 0) {
+    // start a new process with argv given on the command-line, and using our actual environ
+    if ((err = nd_start(client, argv[0], (const char **) argv + 1, (const char **) environ)) < 0) {
         log_errno("nd_start: %s", nd_error_msg(client));
 
         goto error;

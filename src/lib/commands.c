@@ -6,6 +6,31 @@
 
 #include <stdlib.h> // XXX: for abort()
 
+// handshake reply
+static int cmd_hello (struct proto_msg *in, struct proto_msg *unused, void *ctx)
+{
+    struct nd_client *client = ctx;
+    uint16_t proto_version;
+
+    if (proto_read_uint16(in, &proto_version))
+        return -1;
+    
+    switch (proto_version) {
+        case PROTO_V1:
+            log_debug("CMD_HELLO: proto_version=%d (current)", proto_version);
+            break;
+
+        default:
+            log_debug("CMD_HELLO: proto_version=%d (unknown)", proto_version);
+            break;
+    }
+
+    // ok
+    client->proto_version = true;
+
+    return 0;
+}
+
 // handle both CMD_ERROR and CMD_ABORT
 static int cmd_error_abort (struct proto_msg *in, struct proto_msg *unused, void *ctx)
 {
@@ -72,6 +97,10 @@ static int cmd_attached (struct proto_msg *in, struct proto_msg *unused, void *c
 
     // store new ID
     if (nd_store_process_id(client, process_id))
+        return -1;
+
+    // and status
+    if (nd_update_status(client, status, status_code))
         return -1;
 
     // yay
@@ -205,6 +234,7 @@ struct proto_cmd_handler client_command_handlers[] = {
     { CMD_OK,           cmd_ok                  },
     { CMD_ERROR,        cmd_error_abort         },
     { CMD_ABORT,        cmd_error_abort         },
+    { CMD_HELLO,        cmd_hello               },
     { 0,                NULL                    },
 };
 

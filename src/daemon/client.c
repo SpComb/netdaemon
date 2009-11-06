@@ -180,6 +180,25 @@ static int client_cmd_status (struct client *client, enum proto_process_status s
 }
 
 /**
+ * Dispatch command
+ */
+static int client_cmd_dispatch (struct client *client, struct proto_msg *request, struct proto_msg *reply)
+{
+    int err;
+
+    // check protocol state
+    if (!client->version && request->cmd != CMD_HELLO)
+        return EBADMSG;
+
+    // dispatch to handlers
+    if ((err = proto_cmd_dispatch(daemon_command_handlers, request, reply, client)) < 0)
+        return -1;
+
+    // ok
+    return err;
+}
+
+/**
  * Client got a message.
  *
  * Decode the command packet, dispatch it to the correct command handler and send the appropriate reply.
@@ -190,14 +209,18 @@ static int client_on_msg (struct client *client, struct proto_msg *request)
 {
     struct proto_msg reply;
     char buf[ND_PROTO_MSG_MAX];
-    int err = 0;
+    int err;
 
     // prep reply packet
     if (proto_msg_init(&reply, buf, sizeof(buf)))
         goto error;
 
-    // dispatch to command handler
-    if ((err = proto_cmd_dispatch(daemon_command_handlers, request, &reply, client)) < 0)
+    // parse command
+    if (proto_cmd_parse(request))
+        goto error;
+
+    // dispatch
+    if ((err = client_cmd_dispatch(client, request, &reply)) < 0)
         // system error
         goto error;
 
@@ -211,7 +234,7 @@ static int client_on_msg (struct client *client, struct proto_msg *request)
 
     // ok
     return err;
-        
+
 error:
     // error while handling req    
     client_abort(client, errno);

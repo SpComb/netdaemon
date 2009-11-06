@@ -270,6 +270,10 @@ static int nd_poll_internal (struct nd_client *client, struct timeval *tv)
     if (proto_recv_seqpacket(client->sock, &msg))
         return -1;
 
+    // parse
+    if (proto_cmd_parse(&msg))
+        return -1;
+
     // handle it
     if ((err = proto_cmd_dispatch(client_command_handlers, &msg, NULL, client)) < 0) {
         // internal error
@@ -285,7 +289,7 @@ static int nd_poll_internal (struct nd_client *client, struct timeval *tv)
 
         } else {
             // command mismatch!
-            errno = EBADMSG;
+            errno = EINVAL;
 
             return -1;
         }

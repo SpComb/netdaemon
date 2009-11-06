@@ -20,6 +20,9 @@ struct client {
     /** socket IO info */
     struct select_fd fd;
 
+    /** Protocol version agreed upon in handshake */
+    enum proto_version version;
+
     /** Attached process */
     struct process *process;
 

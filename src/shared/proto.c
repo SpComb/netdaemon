@@ -4,9 +4,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-/**
- * Parse out the proto_msg
- */
 int proto_cmd_parse (struct proto_msg *msg)
 {
     // read the message id and cmd
@@ -23,10 +20,6 @@ int proto_cmd_parse (struct proto_msg *msg)
 int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *in, struct proto_msg *out, void *ctx)
 {
     struct proto_cmd_handler *cmd_handler;
-
-    // parse packet
-    if (proto_cmd_parse(in))
-        return -1;
 
     // find the right handler
     for (cmd_handler = cmd_handlers; cmd_handler->cmd && cmd_handler->handler_func; cmd_handler++) {

@@ -14,6 +14,9 @@ struct nd_client {
     /** The communication socket */
     int sock;
 
+    /** Protocol handshake ok */
+    bool proto_version;
+
     /** Callback info */
     struct nd_callbacks cb_funcs;
     void *cb_arg;

@@ -26,9 +26,31 @@ static int cmd_hello (struct proto_msg *req, struct proto_msg *out, void *ctx)
     if (proto_read_uint16(req, &proto_version))
         return -1;
 
-    log_info("proto_version=%u", proto_version);
+
+    switch (proto_version) {
+        case PROTO_V1:
+            log_info("proto_version=%u (current)", proto_version);
+            break;
+
+        default:
+            log_warn("Unknown protocol version: %d", proto_version);
+            
+            errno = EINVAL;
+            
+            return -1;
+    }
+
+    // set
+    client->version = proto_version;
     
-    // XXX: reply with CMD_HELLO
+    // reply with CMD_HELLO
+    if (
+            proto_cmd_reply(out, req, CMD_HELLO)
+        ||  proto_write_uint16(out, PROTO_VERSION)
+    )
+        return -1;
+
+    // ok
     return 0;
 }
 

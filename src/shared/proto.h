@@ -172,6 +172,11 @@ struct proto_msg {
 };
 
 /**
+ * Parse out the proto_msg, filling the .id/cmd fields
+ */
+int proto_cmd_parse (struct proto_msg *msg);
+
+/**
  * Incoming message handler.
  *
  * The incoming message will be given as \a in, and should be read by the handler using the proto_read_* commands.
@@ -198,15 +203,15 @@ struct proto_cmd_handler {
 };
 
 /**
- * Read a cmd from the given proto_msg, and then dispatch it to the correct handler.
+ * Dispatch incoming request to the correct handler by command.
  *
- * The incoming message should be given via \a in, and an initialized proto_msg via \a out for optional use by the
+ * The parsed incoming message should be given via \a in, and an initialized proto_msg via \a out for optional use by the
  * command handler. Test for non-zero out->cmd on return to handle outgoing message.
  *
  * As per proto_cmd_handler_t, this will set errno and return -1 in case of system error, or return a positive error
  * code in case of non-fatal protocol error.
  *
- * Returns ENOTSUP if no matching command handler was found.
+ * Returns errno=ENOTSUP if no matching command handler was found.
  */
 int proto_cmd_dispatch (struct proto_cmd_handler cmd_handlers[], struct proto_msg *in, struct proto_msg *out, void *ctx);
 
