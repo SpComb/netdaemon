@@ -6,6 +6,9 @@ CFLAGS = -Wall -std=gnu99 -g
 # preprocessor flags
 CPPFLAGS = -Isrc/
 
+# output name
+DIST_NAME = 78949E-as1
+DIST_RESOURCES = README "Learning Diary.pdf"
 
 all: depend bin/daemon lib/libnetdaemon.so bin/client
 
@@ -24,14 +27,17 @@ SRC_PATHS = $(wildcard src/*/*.c)
 SRC_NAMES = $(patsubst src/%,%,$(SRC_PATHS))
 SRC_DIRS = $(dir $(SRC_NAMES))
 
+.PHONY : dirs clean depend dist
+
 dirs: 
-	mkdir -p bin lib run
+	mkdir -p bin lib run dist
 	mkdir -p $(SRC_DIRS:%=build/deps/%)
 	mkdir -p $(SRC_DIRS:%=build/obj/%)
 
 clean:
 	rm -f build/obj/*/*.o build/deps/*/*.d
 	rm -f bin/* lib/*.so run/*
+	rm -rf dist/*
 
 # .h dependencies
 depend: $(SRC_NAMES:%.c=build/deps/%.d)
@@ -63,4 +69,12 @@ bin/% : build/obj/%/main.o
 # output libraries
 lib/lib%.so :
 	$(CC) -shared $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
+
+dist:
+	mkdir -p dist/$(DIST_NAME)
+	cp -rv Makefile $(DIST_RESOURCES) src/ dist/$(DIST_NAME)/
+	rm dist/$(DIST_NAME)/src/*/.*.sw[op]
+	make -C dist/$(DIST_NAME) dirs
+	tar -C dist -czvf dist/$(DIST_NAME).tar.gz $(DIST_NAME)
+	@echo "*** Output at dist/$(DIST_NAME).tar.gz"
 
