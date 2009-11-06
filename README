@@ -35,3 +35,8 @@ attach to a process after starting one and reconnecting.
 To start a process or attach to one, the daemon performs authorization of the process's permissions against the client's
 authenticated user.
 
+TODO:
+    * daemon: send CMD_EOF
+    * client: ordering of on_exit/on_stdout_eof to only exit once process has exited AND we have EOF on both
+    * client: nd_attach
+

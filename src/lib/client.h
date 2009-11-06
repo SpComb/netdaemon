@@ -8,6 +8,7 @@
  */
 #include <sys/time.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  * Per-connection handle
@@ -16,6 +17,9 @@ struct nd_client;
 
 /**
  * User callbacks for events recieved from daemon
+ *
+ * These functions should return zero on normal execution, <0 on errno, and >0 to return with some app-specific code
+ * from the running nd_* function.
  */
 struct nd_callbacks {
     /** Recieved data from process on stdout */
@@ -70,11 +74,32 @@ int nd_cmd_hello (struct nd_client *client);
 int nd_start (struct nd_client *client, const char *path, const char **argv, const char **envp);
 
 /**
+ * Send data to stdin on the attached process.
+ *
+ * The data will be written atomically
+ */
+int nd_stdin_data (struct nd_client *client, const char *buf, size_t len);
+
+/**
+ * Send EOF on stdin to the attached process.
+ *
+ * It is an error to send any more data to the process after this succeeds.
+ */
+int nd_stdin_eof (struct nd_client *client);
+
+/**
  * Get the ID of the currently attached process as a NUL-termintated string, or NULL if not attached.
  *
  * String is valid until the process ID next changes.
  */
 const char *nd_process_id (struct nd_client *client);
+
+/**
+ * Return the FD used by nd_client which can be monitored for activity as per want_* before calling nd_poll.
+ *
+ * @return fd >= 0 when connected, or <0 when not connected
+ */
+int nd_poll_fd (struct nd_client *client, bool *want_read, bool *want_write);
 
 /**
  * Poll for any event with the given timeout

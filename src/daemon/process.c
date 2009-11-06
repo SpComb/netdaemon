@@ -288,3 +288,30 @@ int process_reap (struct daemon *daemon)
         return 0;
 }
 
+int process_stdin_data (struct process *process, const char *buf, size_t len)
+{
+    ssize_t ret;
+
+    // XXX: blocking, should buffer
+    while (len) {
+        if ((ret = write(process->std_in, buf, len)) < 0)
+            return -1;
+
+        buf += ret;
+        len -= ret;
+    }
+    
+    return 0;
+}
+
+int process_stdin_eof (struct process *process)
+{
+    log_debug("[%p] EOF on stdin", process);
+
+    if (close(process->std_in))
+        return -1;
+
+    process->std_in = -1;
+
+    return 0;
+}

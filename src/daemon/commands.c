@@ -115,12 +115,38 @@ error:
     return -1;
 }
 
+// write data chunk to process
+static int cmd_data (struct proto_msg *req, struct proto_msg *out, void *ctx)
+{
+    struct client *client = ctx;
+    uint16_t channel;
+    const char *buf;
+    size_t len;
+
+    if (!client->process)
+        // no process attached
+        return ECHILD;
+
+    // read packet
+    if (
+            proto_read_uint16(req, &channel)
+        ||  proto_read_buf_ptr(req, &buf, &len)
+    )
+        return -1;
+
+    log_info("channel=%u, data=%zu:%.*s", channel, len, (int) len, buf);
+
+    // process
+    return client_on_cmd_data(client, channel, buf, len); 
+}
+
 /**
  * Server-side command handlers
  */
 struct proto_cmd_handler daemon_command_handlers[] = {
-    {   CMD_HELLO,      cmd_hello     },
-    {   CMD_START,      cmd_start     },
-    {   0,              0             }
+    {   CMD_DATA,       cmd_data        },
+    {   CMD_HELLO,      cmd_hello       },
+    {   CMD_START,      cmd_start       },
+    {   0,              0               }
 };
 

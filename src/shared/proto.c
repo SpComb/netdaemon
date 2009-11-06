@@ -97,19 +97,39 @@ int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, uint32_t id, e
     return 0;
 }
 
-int proto_read (struct proto_msg *msg, void *buf, size_t len)
+/**
+ * Consume \a len bytes from the msg buf, returning a pointer to the start of the segment, or NULL in case of error
+ */
+static void *proto_consume (struct proto_msg *msg, size_t len)
 {
+    void *ptr;
+
+    // check
     if (msg->offset + len > msg->len) {
         errno = EOVERFLOW;
 
-        return -1;
+        return NULL;
     }
     
-    // store
-    memcpy(buf, msg->buf + msg->offset, len);
+    // return pointer
+    ptr = msg->buf + msg->offset;
 
     // update offset
     msg->offset += len;
+
+    return ptr;
+}
+
+int proto_read (struct proto_msg *msg, void *out_buf, size_t len)
+{
+    void *msg_buf;
+
+    // consume
+    if ((msg_buf = proto_consume(msg, len)) == NULL)
+        return -1;
+   
+    // store
+    memcpy(out_buf, msg_buf, len);
 
     // ok
     return 0;
@@ -151,6 +171,22 @@ int proto_read_int32 (struct proto_msg *msg, int32_t *val_ptr)
     return 0;
 }
 
+int proto_read_buf_ptr (struct proto_msg *msg, const char **buf_ptr, size_t *len_ptr)
+{
+    uint16_t len;
+
+    // read len
+    if (proto_read_uint16(msg, &len))
+        return -1;
+
+    // get buf
+    *buf_ptr = proto_consume(msg, len);
+
+    // ret
+    *len_ptr = len;
+
+    return 0;
+}
 
 int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len)
 {
@@ -204,15 +240,21 @@ int proto_write_int32 (struct proto_msg *msg, int32_t val)
     return proto_write(msg, &val, sizeof(val));
 }
 
-int proto_write_str (struct proto_msg *msg, const char *str)
+int proto_write_buf (struct proto_msg *msg, const char *buf, size_t len)
 {
-    size_t len = strlen(str);
-
     // write length prefix and data
     return (
             proto_write_uint16(msg, len)
-        ||  proto_write(msg, str, len)
+        ||  proto_write(msg, buf, len)
     );
+}
+
+int proto_write_str (struct proto_msg *msg, const char *str)
+{
+    size_t len = strlen(str);
+    
+    // write buf
+    return proto_write_buf(msg, str, len);
 }
 
 int proto_write_str_array (struct proto_msg *msg, const char *str_array[])

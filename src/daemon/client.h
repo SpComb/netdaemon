@@ -48,4 +48,9 @@ void client_on_process_data (struct process *process, enum proto_channel channel
  */
 void client_on_process_status (struct process *process, enum proto_process_status status, int code, void *ctx);
 
+/**
+ * Send data to process
+ */
+int client_on_cmd_data (struct client *client, enum proto_channel channel, const char *buf, size_t len);
+
 #endif

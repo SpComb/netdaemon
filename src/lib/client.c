@@ -136,6 +136,64 @@ error:
     return -1;
 }
 
+int nd_cmd_data (struct nd_client *client, enum proto_channel channel, const char *buf, size_t len)
+{
+    char msg_buf[ND_PROTO_MSG_MAX];
+    struct proto_msg msg;
+
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), nd_msg_id(client), CMD_DATA))
+        goto error;
+
+    // write fields
+    if (
+            proto_write_uint16(&msg, channel)
+        ||  proto_write_buf(&msg, buf, len)
+    )
+        goto error;
+    
+    // send
+    if (nd_send_msg(client, &msg))
+        goto error;
+
+    // ok
+    return 0;
+
+error:
+    return -1;
+
+}
+
+/**
+ * Poll for activity using select().
+ *
+ * @return <0 on error, timeout, 0 on activity
+ */
+static int nd_poll_select (struct nd_client *client, struct timeval *tv)
+{
+    int ret;
+
+    fd_set rfds;
+
+    // set
+    FD_ZERO(&rfds);
+    FD_SET(client->sock, &rfds);
+
+    // poll
+    if ((ret = select(client->sock + 1, &rfds, NULL, NULL, tv)) < 0) {
+        return -1;
+
+    } else if (ret == 0) {
+        // timeout
+        errno = ETIMEDOUT;
+        
+        return -1;
+
+    } else {
+        // ok, activity on sock
+        return 0;
+    }
+}
+
 /**
  * Recieve one message using the given timeout.
  *
@@ -148,7 +206,10 @@ static int nd_poll_internal (struct nd_client *client, struct timeval *tv)
     char buf[ND_PROTO_MSG_MAX];
     int err;
 
-    // XXX implement timeout
+    if (tv)
+        // wait timeout
+        if (nd_poll_select(client, tv))
+            return -1;
 
     // setup msg buf
     if (proto_msg_init(&msg, buf, sizeof(buf)))
@@ -220,9 +281,37 @@ int nd_start (struct nd_client *client, const char *path, const char **argv, con
     return nd_poll_cmd(client);
 }
 
+int nd_stdin_data (struct nd_client *client, const char *buf, size_t len)
+{
+    // send
+    if (nd_cmd_data(client, CHANNEL_STDIN, buf, len))
+        return -1;
+
+    // wait for and return reply
+    return nd_poll_cmd(client);
+}
+
+int nd_stdin_eof (struct nd_client *client)
+{
+    // send zero
+    if (nd_cmd_data(client, CHANNEL_STDIN, "", 0))
+        return -1;
+
+    // wait for and return reply
+    return nd_poll_cmd(client);
+}
+
 const char *nd_process_id (struct nd_client *client)
 {
     return client->process_id;
+}
+
+int nd_poll_fd (struct nd_client *client, bool *want_read, bool *want_write)
+{
+    *want_read = true;
+    *want_write = false;
+
+    return client->sock;
 }
 
 int nd_poll (struct nd_client *client, struct timeval *tv)

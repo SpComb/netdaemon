@@ -70,6 +70,18 @@ int process_attach (struct process *process, struct client *client);
 void process_detach (struct process *process, struct client *client);
 
 /**
+ * Send data to process stdin.
+ *
+ * This garuntees that the given data segment will be written atomically
+ */
+int process_stdin_data (struct process *process, const char *buf, size_t len);
+
+/**
+ * Close the process's stdin
+ */
+int process_stdin_eof (struct process *process);
+
+/**
  * Poll for changes in process state after SIGCHLD; this will greedily reap all children
  */
 int process_reap (struct daemon *daemon);

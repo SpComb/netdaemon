@@ -82,9 +82,15 @@ enum proto_cmd {
     CMD_ATTACHED    = 0x0110,
 
     /**
-     * Server -> Client: data from process
-     *  uint16_t        channel
+     * Server -> Client: data from process stdout/err
+     * Client -> Server: data to process stdin
+     *  uint16_t        channel (CHANNEL_*)
      *  [uint16_t]      data
+     *
+     * These data segments are ordered and interleaved atomically.
+     *
+     * If data is zero-length, this indicates EOF
+     * XXX: replace with CMD_EOF?
      */
     CMD_DATA        = 0x0201,
 
@@ -208,6 +214,11 @@ int proto_read_uint32 (struct proto_msg *msg, uint32_t *val_ptr);
 int proto_read_int32 (struct proto_msg *msg, int32_t *val_ptr);
 
 /**
+ * Read a uint16-prefixed byte array from the msg, returning a pointer to the first char and the length
+ */
+int proto_read_buf_ptr (struct proto_msg *msg, const char **buf_ptr, size_t *len_ptr);
+
+/**
  * Read a str of [len] bytes from the msg, storing it and a terminating NUL byte into buf, which mus store at least
  * len+1 bytes.
  */
@@ -226,6 +237,11 @@ int proto_write (struct proto_msg *msg, const void *buf, size_t len);
 int proto_write_uint16 (struct proto_msg *msg, uint16_t val);
 int proto_write_uint32 (struct proto_msg *msg, uint32_t val);
 int proto_write_int32 (struct proto_msg *msg, int32_t val);
+
+/**
+ * Write a uint16_t-length-prefixed byte array from the given buffer
+ */
+int proto_write_buf (struct proto_msg *msg, const char *buf, size_t len);
 
 /**
  * Write a uint16_t-length-prefixed char array from the given zero-terminated string

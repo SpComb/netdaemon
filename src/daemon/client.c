@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 
 static int client_sock (struct client *client)
 {
@@ -139,8 +140,7 @@ static int client_cmd_data (struct client *client, enum proto_channel channel, c
     // write packet
     if (
             proto_write_uint16(&msg, channel)
-        ||  proto_write_uint16(&msg, len)
-        ||  proto_write(&msg, buf, len)
+        ||  proto_write_buf(&msg, buf, len)
     )
         return -1;
 
@@ -297,5 +297,36 @@ void client_on_process_status (struct process *process, enum proto_process_statu
     // send
     if (client_cmd_status(client, status, code))
         client_abort(client, errno);
+}
+
+int client_on_cmd_data (struct client *client, enum proto_channel channel, const char *buf, size_t len)
+{
+    assert(client->process);
+
+    switch (channel) {
+        case CHANNEL_STDIN:
+            if (len) {
+                log_debug("[%p] Write data to process [%p]: %.*s", client, client->process, (int) len, buf);
+
+                // send to stdin
+                if (process_stdin_data(client->process, buf, len))
+                    // soft error
+                    return errno;
+
+            } else {
+                log_debug("[%p] EOF on stdin to process [%p]", client, client->process);
+
+                // perform
+                if (process_stdin_eof(client->process))
+                    // soft error
+                    return errno;
+            }
+
+            return 0;
+
+        default:
+            // unknown channel
+            return ECHRNG;
+    }
 }
 
