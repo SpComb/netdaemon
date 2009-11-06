@@ -84,7 +84,54 @@ static int cmd_attached (struct proto_msg *in, struct proto_msg *unused, void *c
     return 0;
 }
 
+// data from process
+static int cmd_data (struct proto_msg *in, struct proto_msg *unused, void *ctx)
+{
+    struct nd_client *client = ctx;
+
+    uint16_t channel;
+    uint16_t len;
+    char *buf;
+
+    // read header
+    if (
+            proto_read_uint16(in, &channel)
+        ||  proto_read_uint16(in, &len)
+    )
+        return -1;
+
+    // alloc storage
+    if ((buf = alloca(len + 1)) == NULL)
+        return -1;
+
+    // read data
+    if (proto_read(in, buf, len))
+        return -1;
+
+    // terminate NUL for convenience
+    buf[len] = '\0';
+
+    // report
+    log_debug("CMD_DATA: channel=%u, data=%u:%.*s", channel, len, (int) len, buf);
+
+    // callback
+    switch (channel) {
+        case CHANNEL_STDOUT:
+            return client->cb_funcs.on_stdout(client, buf, len, client->cb_arg);
+        
+        case CHANNEL_STDERR:
+            return client->cb_funcs.on_stderr(client, buf, len, client->cb_arg);
+
+        default:
+            // unknown channel
+            errno = ECHRNG;
+
+            return -1;
+    }
+}
+
 struct proto_cmd_handler client_command_handlers[] = {
+    { CMD_DATA,         cmd_data                },
     { CMD_ATTACHED,     cmd_attached            },
     { CMD_OK,           cmd_ok                  },
     { CMD_ERROR,        cmd_error_abort         },

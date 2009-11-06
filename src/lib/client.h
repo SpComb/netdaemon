@@ -7,6 +7,7 @@
  * Client interface for netdaemon
  */
 #include <sys/time.h>
+#include <stddef.h>
 
 /**
  * Per-connection handle
@@ -17,7 +18,11 @@ struct nd_client;
  * User callbacks for events recieved from daemon
  */
 struct nd_callbacks {
-    /**  */
+    /** Recieved data from process on stdout */
+    int (*on_stdout) (struct nd_client *client, const char *buf, size_t len, void *arg);
+
+    /** Recieved data from process on stderr */
+    int (*on_stderr) (struct nd_client *client, const char *buf, size_t len, void *arg);
 };
 
 /**
@@ -27,7 +32,7 @@ struct nd_callbacks {
  * @param cb_funcs      table of event callbacks
  * @param cb_arg        callback context argument
  */
-int nd_create (struct nd_client **client_ptr, struct nd_callbacks *cb_funcs, void *cb_arg);
+int nd_create (struct nd_client **client_ptr, const struct nd_callbacks *cb_funcs, void *cb_arg);
 
 /**
  * Open the client connection to the server over an UNIX socket at the given path.

@@ -9,6 +9,21 @@
 #include <stdbool.h>
 
 /**
+ * Run while attached to some process, shuffling data between stdin/out/err, until STDINT
+ */
+static int run_process (struct nd_client *client)
+{
+    while (true) {
+        if (nd_poll(client, NULL) < 0)
+            return -1;
+
+        log_debug("nd_poll tick");
+    }
+
+    return 0;
+}
+
+/**
  * Start a new process and remain attached to it
  */
 static int cmd_start (struct nd_client *client, char **argv)
@@ -37,8 +52,11 @@ static int cmd_start (struct nd_client *client, char **argv)
     // yay
     log_info("Attached to process: %s", nd_process_id(client));
 
-    // XXX: remain attached
+    // remain attached
+    if (run_process(client))
+        goto error;
 
+    // ok
     return 0;
 
 error:
@@ -53,6 +71,31 @@ static const struct command {
 } commands[] = {
     { "start",      cmd_start           },
     { NULL,         NULL                }
+};
+
+static int on_data (const char *buf, size_t len, FILE *stream)
+{
+    // write out
+    if (fwrite(buf, len, 1, stream) < 0)
+        return -1;
+
+    // ok
+    return 0;
+}
+
+static int on_stdout (struct nd_client *client, const char *buf, size_t len, void *arg)
+{
+    return on_data(buf, len, stdout);
+}
+
+static int on_stderr (struct nd_client *client, const char *buf, size_t len, void *arg)
+{
+    return on_data(buf, len, stderr);
+}
+
+static const struct nd_callbacks callbacks = {
+    .on_stdout      = on_stdout,
+    .on_stderr      = on_stderr,
 };
 
 static const struct option options[] = {
@@ -77,7 +120,7 @@ int setup_client (struct nd_client **client_ptr, const char *unix_path)
     struct nd_client *client = NULL;
 
     // create
-    if (nd_create(&client, NULL, NULL)) {
+    if (nd_create(&client, &callbacks, NULL)) {
         log_errno("nd_create");
 
         goto error;

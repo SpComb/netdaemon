@@ -127,7 +127,7 @@ static int client_reply (struct client *client, struct proto_msg *req, int error
 /**
  * Send a CMD_DATA packet to the client
  */
-static int client_cmd_data (struct client *client, enum process_fd channel, const char *buf, size_t len)
+static int client_cmd_data (struct client *client, enum proto_channel channel, const char *buf, size_t len)
 {
     struct proto_msg msg;
     char msg_buf[ND_PROTO_MSG_MAX];
@@ -139,6 +139,7 @@ static int client_cmd_data (struct client *client, enum process_fd channel, cons
     // write packet
     if (
             proto_write_uint16(&msg, channel)
+        ||  proto_write_uint16(&msg, len)
         ||  proto_write(&msg, buf, len)
     )
         return -1;
@@ -248,7 +249,7 @@ int client_add_seqpacket (struct daemon *daemon, int sock)
     return 0;
 }
 
-void client_on_process_data (struct process *process, enum process_fd channel, const char *buf, size_t len, void *ctx)
+void client_on_process_data (struct process *process, enum proto_channel channel, const char *buf, size_t len, void *ctx)
 {
     struct client *client = ctx;
 

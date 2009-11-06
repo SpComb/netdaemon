@@ -9,15 +9,6 @@
 #include <shared/select.h>
 
 /**
- * Per-process communication channels
- */
-enum process_fd {
-    PROCESS_STDIN   = 0 /* STDIN_FILENO */,
-    PROCESS_STDOUT  = 1 /* STDOUT_FILENO */,
-    PROCESS_STDERR  = 2 /* STDERR_FILENO */,
-};
-
-/**
  * Info required for process exec
  */
 struct process_exec_info {

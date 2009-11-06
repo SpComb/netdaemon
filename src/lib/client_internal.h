@@ -14,6 +14,10 @@ struct nd_client {
     /** The communication socket */
     int sock;
 
+    /** Callback info */
+    struct nd_callbacks cb_funcs;
+    void *cb_arg;
+
     /** ID of the last command sent */
     proto_msg_id_t last_id;
 

@@ -8,6 +8,7 @@
  */
 #include "daemon.h"
 #include "process.h"
+#include "shared/proto.h"
 
 /**
  * Per-client connection state
@@ -40,6 +41,6 @@ int client_add_seqpacket (struct daemon *daemon, int sock);
  *
  * XXX: should not be a 'public' interface
  */
-void client_on_process_data (struct process *process, enum process_fd channel, const char *buf, size_t len, void *ctx);
+void client_on_process_data (struct process *process, enum proto_channel channel, const char *buf, size_t len, void *ctx);
 
 #endif

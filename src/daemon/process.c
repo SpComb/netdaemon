@@ -10,7 +10,7 @@
 /**
  * Read-cctivity on process fd
  */
-static int process_on_read (struct process *process, enum process_fd channel, int fd)
+static int process_on_read (struct process *process, enum proto_channel channel, int fd)
 {
     char buf[4096];
     ssize_t ret;
@@ -45,7 +45,7 @@ static int process_on_stdout (int fd, short what, void *ctx)
 {
     struct process *process = ctx;
     
-    return process_on_read(process, PROCESS_STDOUT, fd);
+    return process_on_read(process, CHANNEL_STDOUT, fd);
 }
 
 /**
@@ -55,7 +55,7 @@ static int process_on_stderr (int fd, short what, void *ctx)
 {
     struct process *process = ctx;
     
-    return process_on_read(process, PROCESS_STDERR, fd);
+    return process_on_read(process, CHANNEL_STDERR, fd);
 }
 
 /**

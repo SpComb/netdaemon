@@ -26,7 +26,7 @@ static int nd_send_msg (struct nd_client *client, struct proto_msg *msg)
     return proto_send_seqpacket(client->sock, msg);
 }
 
-int nd_create (struct nd_client **client_ptr, struct nd_callbacks *cb_funcs, void *cb_arg)
+int nd_create (struct nd_client **client_ptr, const struct nd_callbacks *cb_funcs, void *cb_arg)
 {
     struct nd_client *client;
 
@@ -37,6 +37,10 @@ int nd_create (struct nd_client **client_ptr, struct nd_callbacks *cb_funcs, voi
     // init
     client->sock = -1;
     client->last_id = 1;
+
+    // store
+    client->cb_funcs = *cb_funcs;
+    client->cb_arg = cb_arg;
 
     // ok
     *client_ptr = client;

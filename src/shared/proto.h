@@ -21,9 +21,21 @@ enum proto_version {
 };
 
 /**
- * Protocol message ID
+ * Protocol message ID.
+ *
+ * zero for server -> client
+ * ++n for client -> server -> client
  */
 typedef uint32_t proto_msg_id_t;
+
+/**
+ * Per-process data channels
+ */
+enum proto_channel {
+    CHANNEL_STDIN   = 0 /* STDIN_FILENO */,
+    CHANNEL_STDOUT  = 1 /* STDOUT_FILENO */,
+    CHANNEL_STDERR  = 2 /* STDERR_FILENO */,
+};
 
 /**
  * Protocol commands, uint16_t.
