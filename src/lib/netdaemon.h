@@ -7,7 +7,7 @@
  * The netdaemon library.
  */
 
-// example API
-#include "helloworld.h"
+// client API
+#include "client.h"
 
 #endif
