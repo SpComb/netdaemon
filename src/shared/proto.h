@@ -38,6 +38,15 @@ enum proto_channel {
 };
 
 /**
+ * Process status types
+ */
+enum proto_process_status {
+    PROCESS_RUN     = 1,    ///< process is running
+    PROCESS_EXIT    = 2,    ///< process has exit()'d or returned from main with exit status
+    PROCESS_KILL    = 3,    ///< process was terminated by signal code
+};
+
+/**
  * Protocol commands, uint16_t.
  */
 enum proto_cmd {
@@ -78,6 +87,13 @@ enum proto_cmd {
      *  [uint16_t]      data
      */
     CMD_DATA        = 0x0201,
+
+    /**
+     * Server -> Client: process status changed
+     *  uint16_t        process_status      one of PROCESS_*
+     *  uint16_t        status_code         value depends on process_status (PROCESS_EXIT/PROCESS_KILL)
+     */
+    CMD_STATUS      = 0x0202,
 
     /**
      * Server -> Client: Associated command executed ok, no specific reply data

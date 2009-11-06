@@ -224,14 +224,30 @@ void process_detach (struct process *process, struct client *client)
  */
 static int process_update (struct process *process, int status)
 {
+    enum proto_process_status pstatus;
+    int code;
+    struct client *client;
+
     if (WIFEXITED(status)) {
-        log_info("[%p] Exited with status=%d", process, WEXITSTATUS(status));
+        pstatus = PROCESS_EXIT;
+        code = WEXITSTATUS(status);
+
+        log_info("[%p] Exited with status=%d", process, code);
 
     } else if (WIFSIGNALED(status)) {
-        log_info("[%p] Exited with signal=%d", process, WTERMSIG(status));
+        pstatus = PROCESS_KILL;
+        code = WTERMSIG(status);
+
+        log_info("[%p] Exited with signal=%d", process, code);
 
     } else {
         log_warn("[%p] Unknown status=%d", process, status);
+    }
+
+    // notify attached clients
+    LIST_FOREACH(client, &process->clients, process_clients) {
+        // callback
+        client_on_process_status(process, pstatus, code, client);
     }
 
     return 0;

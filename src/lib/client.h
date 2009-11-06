@@ -23,6 +23,12 @@ struct nd_callbacks {
 
     /** Recieved data from process on stderr */
     int (*on_stderr) (struct nd_client *client, const char *buf, size_t len, void *arg);
+
+    /** Process exited */
+    int (*on_exit) (struct nd_client *client, int status, void *arg);
+
+    /** Process was killed by signal */
+    int (*on_kill) (struct nd_client *client, int sig, void *arg);
 };
 
 /**

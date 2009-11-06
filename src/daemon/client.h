@@ -43,4 +43,9 @@ int client_add_seqpacket (struct daemon *daemon, int sock);
  */
 void client_on_process_data (struct process *process, enum proto_channel channel, const char *buf, size_t len, void *ctx);
 
+/**
+ * Client's attached process changed status
+ */
+void client_on_process_status (struct process *process, enum proto_process_status status, int code, void *ctx);
+
 #endif

@@ -130,7 +130,49 @@ static int cmd_data (struct proto_msg *in, struct proto_msg *unused, void *ctx)
     }
 }
 
+// process status changed
+static int cmd_status (struct proto_msg *in, struct proto_msg *unused, void *ctx)
+{
+    struct nd_client *client = ctx;
+
+    uint16_t status, code;
+
+    // read
+    if (
+            proto_read_uint16(in, &status)
+        ||  proto_read_uint16(in, &code)
+    )
+        return -1;
+
+    // update
+    log_debug("CMD_STATUS: status=%d, code=%d", status, code);
+
+    if (nd_update_status(client, status, code))
+        return -1;
+
+    switch (status) {
+        case PROCESS_RUN:
+            // XXX: ignore
+            return 0;
+
+        case PROCESS_EXIT:
+            // callback
+            return client->cb_funcs.on_exit(client, code, client->cb_arg);
+
+        case PROCESS_KILL:
+            // callback
+            return client->cb_funcs.on_kill(client, code, client->cb_arg);
+
+        default:
+            // wtf
+            errno = EINVAL;
+
+            return -1;
+    }
+}
+
 struct proto_cmd_handler client_command_handlers[] = {
+    { CMD_STATUS,       cmd_status              },
     { CMD_DATA,         cmd_data                },
     { CMD_ATTACHED,     cmd_attached            },
     { CMD_OK,           cmd_ok                  },

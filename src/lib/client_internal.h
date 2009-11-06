@@ -43,4 +43,10 @@ char *nd_store_error (struct nd_client *client, int err_code, size_t err_msg_len
  */
 char *nd_store_process_id (struct nd_client *client, size_t process_id_len);
 
+/**
+ * Update cached process status
+ */
+int nd_update_status (struct nd_client *client, enum proto_process_status status, int code);
+
+
 #endif

@@ -153,6 +153,33 @@ static int client_cmd_data (struct client *client, enum proto_channel channel, c
 }
 
 /**
+ * Send a CMD_STATUS packet to the client
+ */
+static int client_cmd_status (struct client *client, enum proto_process_status status, int code)
+{
+    struct proto_msg msg;
+    char msg_buf[ND_PROTO_MSG_MAX];
+
+    // prep CMD_STATUS
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), 0, CMD_STATUS))
+        return -1;
+
+    // write packet
+    if (
+            proto_write_uint16(&msg, status)
+        ||  proto_write_uint16(&msg, code)
+    )
+        return -1;
+
+    // send
+    if (client_send(client, &msg))
+        return -1;
+
+    // ok
+    return 0;   
+}
+
+/**
  * Client got a message.
  *
  * Decode the command packet, dispatch it to the correct command handler and send the appropriate reply.
@@ -258,6 +285,17 @@ void client_on_process_data (struct process *process, enum proto_channel channel
     
     // send packet
     if (client_cmd_data(client, channel, buf, len))
+        client_abort(client, errno);
+}
+
+void client_on_process_status (struct process *process, enum proto_process_status status, int code, void *ctx)
+{
+    struct client *client = ctx;
+    
+    log_debug("[%p] Got status from process [%p]: %d:%d", client, process, status, code);
+
+    // send
+    if (client_cmd_status(client, status, code))
         client_abort(client, errno);
 }
 

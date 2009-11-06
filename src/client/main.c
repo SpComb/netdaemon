@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "lib/client.h"
 #include "shared/log.h"
 
@@ -7,15 +8,21 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <signal.h> // raise()
 
 /**
  * Run while attached to some process, shuffling data between stdin/out/err, until STDINT
  */
 static int run_process (struct nd_client *client)
 {
+    int err;
+
     while (true) {
-        if (nd_poll(client, NULL) < 0)
+        if ((err = nd_poll(client, NULL)) < 0)
             return -1;
+
+        else if (err)
+            return 0;
 
         log_debug("nd_poll tick");
     }
@@ -93,9 +100,31 @@ static int on_stderr (struct nd_client *client, const char *buf, size_t len, voi
     return on_data(buf, len, stderr);
 }
 
+static int on_exit_ (struct nd_client *client, int status, void *arg)
+{
+    log_info("Process exited with status: %d", status);
+
+    // neat trick
+    exit(status);
+    
+    return 1;
+}
+
+static int on_kill (struct nd_client *client, int sig, void *arg)
+{
+    log_info("Process killed by signal: %d(%s)", sig, strsignal(sig));
+
+    // neat trick
+    raise(sig);
+
+    return 1;
+}
+
 static const struct nd_callbacks callbacks = {
     .on_stdout      = on_stdout,
     .on_stderr      = on_stderr,
+    .on_exit        = on_exit_,
+    .on_kill        = on_kill,
 };
 
 static const struct option options[] = {

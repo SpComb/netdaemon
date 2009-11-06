@@ -179,8 +179,7 @@ static int nd_poll_internal (struct nd_client *client, struct timeval *tv)
         }
 
     } else {
-        // err shouldn't be positive
-        assert(err == 0);
+        client->last_res = err;
 
         // event
         return 0;
@@ -239,7 +238,7 @@ int nd_poll (struct nd_client *client, struct timeval *tv)
 
     else
         // ok
-        return 0;
+        return client->last_res;
 }
 
 int nd_error (struct nd_client *client)
@@ -296,4 +295,11 @@ char *nd_store_process_id (struct nd_client *client, size_t process_id_len)
 
     // ok
     return client->process_id;
+}
+
+int nd_update_status (struct nd_client *client, enum proto_process_status status, int code)
+{
+    // XXX: implement
+
+    return 0;
 }
