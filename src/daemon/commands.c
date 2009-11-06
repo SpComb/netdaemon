@@ -40,7 +40,7 @@ static int cmd_start (struct proto_msg *req, struct proto_msg *out, void *ctx)
     uint16_t len, argv_len;
     struct process_exec_info exec_info;
     char *arg, *env;
-    int i, err;
+    int i;
 
     // verify that we are not attached to any process already
     if (client->process)

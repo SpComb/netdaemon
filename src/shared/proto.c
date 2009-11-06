@@ -136,6 +136,19 @@ int proto_read_uint32 (struct proto_msg *msg, uint32_t *val_ptr)
     return 0;
 }
 
+int proto_read_int32 (struct proto_msg *msg, int32_t *val_ptr)
+{
+    if (proto_read(msg, val_ptr, sizeof(*val_ptr)))
+        return -1;
+
+    // convert
+    *val_ptr = ntohl(*val_ptr);
+
+    // ok
+    return 0;
+}
+
+
 int _proto_read_str (struct proto_msg *msg, char *buf, uint16_t len)
 {
     // read str value

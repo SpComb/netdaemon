@@ -21,6 +21,11 @@ enum proto_version {
 };
 
 /**
+ * Protocol message ID
+ */
+typedef uint32_t proto_msg_id_t;
+
+/**
  * Protocol commands, uint16_t.
  */
 enum proto_cmd {
@@ -101,7 +106,7 @@ struct proto_msg {
     size_t offset;
 
     /** Per-message handle */
-    uint32_t id;
+    proto_msg_id_t id;
 
     /** Command code */
     uint16_t cmd;
@@ -172,6 +177,7 @@ int proto_cmd_init (struct proto_msg *msg, char *buf, size_t len, uint32_t id, e
 int proto_read (struct proto_msg *msg, void *buf, size_t len);
 int proto_read_uint16 (struct proto_msg *msg, uint16_t *val_ptr);
 int proto_read_uint32 (struct proto_msg *msg, uint32_t *val_ptr);
+int proto_read_int32 (struct proto_msg *msg, int32_t *val_ptr);
 
 /**
  * Read a str of [len] bytes from the msg, storing it and a terminating NUL byte into buf, which mus store at least
