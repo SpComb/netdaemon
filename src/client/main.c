@@ -158,6 +158,48 @@ static int cmd_attach (struct nd_client *client, char **argv)
 }
 
 /**
+ * Attach to process and send signal
+ */
+static int cmd_kill (struct nd_client *client, char **argv)
+{
+    int err, sig;
+
+    if (!argv[0]) {
+        log_error("No process ID given");
+
+        return -1;
+    }
+
+    if (!argv[1]) {
+        log_error("No signal given");
+
+        return -1;
+    }
+
+    if ((sig = atoi(argv[1])) <= 0) {
+        log_error("Invalid signal: %s", argv[1]);
+
+        return -1;
+    }
+
+    // attach
+    if ((err = nd_attach(client, argv[0])))
+        return err;
+
+    // yay
+    log_debug("Attached to process: %s", nd_process_id(client));
+
+    // then signal
+    if ((err = nd_kill(client, sig)))
+        return err;
+
+    // good
+    log_info("Sent signal %s to process %s", strsignal(sig), nd_process_id(client));
+
+    return 0;
+}
+
+/**
  * CLI Commands
  */
 static const struct command {
@@ -168,6 +210,7 @@ static const struct command {
 } commands[] = {
     { "start",      cmd_start           },
     { "attach",     cmd_attach          },
+    { "kill",       cmd_kill            },
     { NULL,         NULL                }
 };
 

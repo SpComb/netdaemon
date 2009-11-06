@@ -108,6 +108,12 @@ enum proto_cmd {
     CMD_STATUS      = 0x0202,
 
     /**
+     * Client -> Server: send signal to process
+     *  uint16_t        signal              SIG* to send
+     */
+    CMD_KILL        = 0x0203,
+
+    /**
      * Server -> Client: Associated command executed ok, no specific reply data
      */
     CMD_OK          = 0xff00,

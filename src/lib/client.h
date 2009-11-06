@@ -95,6 +95,11 @@ int nd_stdin_data (struct nd_client *client, const char *buf, size_t len);
 int nd_stdin_eof (struct nd_client *client);
 
 /**
+ * Send a signal to the attached process
+ */
+int nd_kill (struct nd_client *client, int sig);
+
+/**
  * Get the ID of the currently attached process as a NUL-termintated string, or NULL if not attached.
  *
  * String is valid until the process ID next changes.

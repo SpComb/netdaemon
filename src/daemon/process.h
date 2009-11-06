@@ -87,6 +87,11 @@ int process_stdin_data (struct process *process, const char *buf, size_t len);
 int process_stdin_eof (struct process *process);
 
 /**
+ * Send signal to process
+ */
+int process_kill (struct process *process, int sig);
+
+/**
  * Kill the process and bury the body.
  */
 void process_destroy (struct process *process);

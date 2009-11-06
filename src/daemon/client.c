@@ -399,3 +399,18 @@ int client_attach (struct client *client, const char *process_id)
     return client_attach_process(client, process);
 }
 
+int client_kill (struct client *client, int sig)
+{
+    if (!client->process)
+        return ECHILD;
+    
+    log_info("[%p] Send signal %d to process [%p]", client, sig, client->process);
+
+    // signal
+    if (process_kill(client->process, sig))
+        return errno;
+
+    // ok
+    return 0;
+}
+

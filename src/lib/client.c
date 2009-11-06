@@ -181,6 +181,23 @@ int nd_cmd_attach (struct nd_client *client, const char *process_id)
     return 0;
 }
 
+int nd_cmd_kill (struct nd_client *client, int sig)
+{
+    char msg_buf[512];
+    struct proto_msg msg;
+
+    if (proto_cmd_init(&msg, msg_buf, sizeof(msg_buf), nd_msg_id(client), CMD_KILL))
+        return -1;
+    
+    if (proto_write_uint16(&msg, sig))
+        return -1;
+
+    if (nd_send_msg(client, &msg))
+        return -1;
+
+    // ok
+    return 0;
+}
 
 /**
  * Poll for activity using select().
@@ -328,6 +345,16 @@ int nd_stdin_eof (struct nd_client *client)
 
     // wait for and return reply
     return nd_poll_cmd(client);
+}
+
+int nd_kill (struct nd_client *client, int sig)
+{
+     // send the command
+    if (nd_cmd_kill(client, sig))
+        return -1;
+
+    // wait for and return reply
+    return nd_poll_cmd(client);   
 }
 
 const char *nd_process_id (struct nd_client *client)

@@ -68,4 +68,9 @@ int client_start (struct client *client, const struct process_exec_info *exec_in
  */
 int client_attach (struct client *client, const char *process_id);
 
+/**
+ * Send signal to attached process
+ */
+int client_kill (struct client *client, int sig);
+
 #endif

@@ -149,10 +149,26 @@ error:
     return -1;
 } 
 
+// send signal to process
+static int cmd_kill (struct proto_msg *req, struct proto_msg *out, void *ctx)
+{
+    struct client *client = ctx;
+    uint16_t sig;
+
+    if (proto_read_uint16(req, &sig))
+        return -1;
+
+    log_info("sig=%u", sig);
+
+    // process
+    return client_kill(client, sig);
+}
+
 /**
  * Server-side command handlers
  */
 struct proto_cmd_handler daemon_command_handlers[] = {
+    {   CMD_KILL,       cmd_kill        },
     {   CMD_ATTACH,     cmd_attach      },
     {   CMD_DATA,       cmd_data        },
     {   CMD_HELLO,      cmd_hello       },

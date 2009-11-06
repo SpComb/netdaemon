@@ -346,6 +346,25 @@ int process_stdin_eof (struct process *process)
     return 0;
 }
 
+int process_kill (struct process *process, int sig)
+{
+    if (process->pid < 0) {
+        // process it not alive
+        errno = ESHUTDOWN;
+        
+        return -1;
+    }
+
+    // send signal
+    if (kill(process->pid, sig))
+        return -1;
+
+    log_debug("[%p] Sent signal %d", process, sig);
+
+    // ok
+    return 0;
+}
+
 void process_destroy (struct process *process)
 {
     struct client *client;
