@@ -349,7 +349,42 @@ static const struct option options[] = {
  */
 void help (const char *argv0)
 {
-    fprintf(stderr, "Usage: %s [options] [command] [--] [args [...]]\n", argv0);
+    fprintf(stderr, "Usage: %s [options] <command> [--] [args [...]]\n", argv0);
+    fprintf(stderr,
+        "Connect to a netdaemon, attaching to a process or issuing a command.\n"
+        "\n"
+        "\t-h, --help           show this help and exit\n"
+        "\t-q, --quiet          supress informational output\n"
+        "\t-v, --verbose        display more informational output\n"
+        "\t-d, --debug          equivalent to -v\n"
+        "\t-u, --unix=PATH      connect using the given UNIX socket\n"
+        "\n"
+        "Commands available:\n"
+        "\tstart -- <exec_path> [<arg> [...]]\n"
+        "\t\tSpawn a new process from the given executable and arguments, attaching to it\n"
+        "\n"
+        "\tattach <id>\n"
+        "\t\tAttach to the pre-existing process with the given ID\n"
+        "\n"
+        "\tlist\n"
+        "\t\tQuery for and display a listing of processes on the daemon\n"
+        "\n"
+        "\tkill <id> <signal>\n"
+        "\t\tSend a signal to the process with the given ID\n"
+        "\n"
+        "\n"
+        "When attached to a process, the local stdin/out/err are linked to the process's respective I/O streams, and\n"
+        "process exit statuses are reflected in the exit status of this process\n"
+        "\n"
+        "Examples:\n"
+    );
+    fprintf(stderr,
+        "\t%s -q -u run/netdaemon start -- /bin/wc -l\n"
+        "\t%s -u run/netdaemon list\n"
+        "\t%s -u run/netdaemon attach /bin/wc:1234\n"
+        "\t%s -u run/netdaemon kill /bin/wc:1234 15\n",
+        argv0, argv0, argv0, argv0
+    );
 }
 
 /**

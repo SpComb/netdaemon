@@ -6,4 +6,5 @@ syntax: regexp
 ^bin/
 ^lib/
 ^doc/html
-
+^dist
+^Learning Diary\.pdf$
